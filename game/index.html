@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>SOLMAR — Streets of the Sun | Open-World Crime Game</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b1622;
+    font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#fff;}
+  #app{position:fixed;inset:0;}
+  canvas.game{display:block;width:100%;height:100%;}
+  .hidden{display:none !important;}
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;inset:0;pointer-events:none;z-index:5;}
+  #topRight{position:absolute;top:14px;right:16px;text-align:right;text-shadow:0 2px 6px #000;}
+  #clock{font-size:22px;font-weight:700;letter-spacing:1px;}
+  #money{font-size:22px;font-weight:800;color:#7dff9b;}
+  #date{font-size:12px;opacity:.85;letter-spacing:2px;text-transform:uppercase;}
+  #wanted{margin-top:6px;font-size:26px;letter-spacing:2px;color:#ffd23f;
+    text-shadow:0 0 10px rgba(255,60,60,.9);}
+  #wanted .lit{color:#ff3b30;}
+  #bottomLeft{position:absolute;left:16px;bottom:16px;text-shadow:0 2px 6px #000;}
+  #healthBar{width:220px;height:14px;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.7);
+    border-radius:8px;overflow:hidden;}
+  #healthFill{height:100%;width:100%;background:linear-gradient(90deg,#37e05a,#a5ff6e);}
+  #healthLabel{font-size:12px;letter-spacing:2px;margin-top:4px;opacity:.9;}
+  #ammo{font-size:20px;font-weight:700;margin-top:6px;}
+  #speedo{position:absolute;right:16px;bottom:16px;text-align:right;text-shadow:0 2px 6px #000;}
+  #speed{font-size:44px;font-weight:800;line-height:1;}
+  #speedUnit{font-size:13px;letter-spacing:2px;opacity:.85;}
+  #carName{font-size:14px;font-weight:700;color:#ffd23f;letter-spacing:1px;}
+  #objective{position:absolute;top:14px;left:16px;max-width:420px;text-shadow:0 2px 6px #000;}
+  #missionTitle{font-size:13px;letter-spacing:3px;color:#ffd23f;text-transform:uppercase;font-weight:700;}
+  #objectiveText{font-size:19px;font-weight:700;margin-top:2px;line-height:1.25;}
+  #objectiveSub{font-size:13px;opacity:.9;margin-top:2px;}
+  #minimapWrap{position:absolute;left:16px;bottom:86px;border:3px solid rgba(255,255,255,.75);
+    border-radius:50%;overflow:hidden;box-shadow:0 0 0 3px rgba(0,0,0,.45),0 4px 18px rgba(0,0,0,.5);
+    background:#12202e;}
+  #minimap{display:block;border-radius:50%;}
+  #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);text-align:center;
+    text-shadow:0 2px 8px #000;pointer-events:none;}
+  #toastBig{font-size:34px;font-weight:800;letter-spacing:1px;color:#ffd23f;}
+  #toastSmall{font-size:16px;font-weight:600;margin-top:4px;}
+  #hint{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font-size:14px;
+    background:rgba(0,0,0,.55);padding:8px 14px;border-radius:20px;letter-spacing:.5px;}
+  #crosshair{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;
+    pointer-events:none;}
+  #crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;
+    box-shadow:0 0 4px #000;}
+  #crosshair:before{left:10px;top:0;width:2px;height:22px;}
+  #crosshair:after{top:10px;left:0;width:22px;height:2px;}
+  #damage{position:absolute;inset:0;pointer-events:none;opacity:0;
+    box-shadow:inset 0 0 120px 40px rgba(255,0,0,.75);transition:opacity .15s;}
+  #dialog{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);width:min(640px,86vw);
+    background:rgba(8,14,24,.88);border:1px solid rgba(255,210,63,.6);border-radius:10px;
+    padding:14px 18px;pointer-events:none;}
+  #dialogName{color:#ffd23f;font-weight:800;letter-spacing:1px;font-size:13px;text-transform:uppercase;}
+  #dialogText{font-size:16px;line-height:1.45;margin-top:4px;}
+  #interact{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:16px;font-weight:700;
+    background:rgba(0,0,0,.6);border:1px solid #ffd23f;color:#ffd23f;padding:8px 16px;border-radius:8px;}
+  /* ---------- Screens ---------- */
+  .screen{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,rgba(6,18,34,.88),rgba(20,4,20,.82));}
+  .panel{width:min(680px,92vw);max-height:92vh;overflow:auto;text-align:center;padding:28px 30px;
+    background:rgba(10,20,34,.92);border:1px solid rgba(255,210,63,.55);border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .logo{font-size:64px;font-weight:900;letter-spacing:6px;line-height:.95;
+    background:linear-gradient(180deg,#ffe27a,#ff9d2e 55%,#ff4d6d);-webkit-background-clip:text;
+    background-clip:text;color:transparent;text-shadow:0 6px 30px rgba(255,120,40,.25);}
+  .tagline{font-size:15px;letter-spacing:4px;text-transform:uppercase;color:#9fd8ff;margin-top:8px;}
+  .story{font-size:15px;line-height:1.6;color:#dfe9f5;text-align:left;margin:18px auto 6px;max-width:560px;}
+  .btn{display:block;width:100%;margin:10px 0;padding:13px 18px;font-size:17px;font-weight:800;
+    letter-spacing:1px;color:#10131a;background:linear-gradient(180deg,#ffe27a,#ffb02e);
+    border:none;border-radius:10px;cursor:pointer;}
+  .btn:hover{filter:brightness(1.1);}
+  .btn.ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.35);}
+  .controls{font-size:13.5px;line-height:1.9;color:#bcd2e8;text-align:left;max-width:560px;margin:10px auto;}
+  .controls b{color:#ffd23f;}
+  .foot{font-size:12px;color:#7d93a8;margin-top:14px;line-height:1.5;}
+  #pauseStats{font-size:15px;line-height:1.9;color:#dfe9f5;}
+  kbd{background:#22344a;border:1px solid #56708c;border-radius:4px;padding:1px 6px;font-size:12px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud" class="hidden">
+  <div id="objective">
+    <div id="missionTitle">Solmar City</div>
+    <div id="objectiveText">Explore the city</div>
+    <div id="objectiveSub"></div>
+  </div>
+  <div id="topRight">
+    <div id="clock">09:00</div>
+    <div id="date">Solmar &bull; Sunny</div>
+    <div id="money">$ 0</div>
+    <div id="wanted"></div>
+  </div>
+  <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
+  <div id="bottomLeft">
+    <div id="healthBar"><div id="healthFill"></div></div>
+    <div id="healthLabel">HEALTH</div>
+    <div id="ammo">&#128299; -- / --</div>
+  </div>
+  <div id="speedo" class="hidden">
+    <div id="carName"></div>
+    <div id="speed">0</div>
+    <div id="speedUnit">KM/H</div>
+  </div>
+  <div id="toast"><div id="toastBig"></div><div id="toastSmall"></div></div>
+  <div id="hint"></div>
+  <div id="crosshair" class="hidden"></div>
+  <div id="damage"></div>
+  <div id="dialog" class="hidden"><div id="dialogName"></div><div id="dialogText"></div></div>
+  <div id="interact" class="hidden"></div>
+</div>
+
+<div id="startScreen" class="screen">
+  <div class="panel">
+    <div class="logo">SOLMAR</div>
+    <div class="tagline">Streets of the Sun &mdash; an open-world crime story</div>
+    <p class="story">Solmar: sun, sea and money that never sleeps. You are <b style="color:#ffd23f">Dario Voss</b>,
+    a wheelman who burned his last crew. Your sister <b style="color:#ffd23f">Mara</b> runs a garage on Coral Row
+    and your old friend <b style="color:#ffd23f">Kito</b> has a plan to take the harbour back from the
+    <b style="color:#ffd23f">Vane family</b>. Steal cars, outrun the Solmar Police, take jobs, and build a
+    name &mdash; one mission at a time.</p>
+    <button class="btn" id="btnNew">▶ NEW GAME</button>
+    <button class="btn ghost hidden" id="btnContinue">↻ CONTINUE — <span id="continueInfo"></span></button>
+    <button class="btn ghost" id="btnHow">HOW TO PLAY</button>
+    <div class="controls hidden" id="howPanel">
+      <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Mouse</b> look (drag) &nbsp;·&nbsp; <b>Shift</b> sprint<br>
+      <b>E</b> enter / steal a car &nbsp;·&nbsp; <b>Space</b> handbrake &nbsp;·&nbsp; <b>Click</b> shoot (on foot)<br>
+      <b>R</b> reload &nbsp;·&nbsp; <b>C</b> camera &nbsp;·&nbsp; <b>H</b> horn &nbsp;·&nbsp; <b>P</b> / <b>Esc</b> pause<br>
+      <b>M</b> music on/off &nbsp;·&nbsp; Follow the <b style="color:#ffd23f">yellow marker</b> on the map.
+      Stealing a car in front of police raises your wanted level — lose the cops to cool down.
+      Your progress saves automatically.
+    </div>
+    <div class="foot">A completely original game. No characters, names, maps or assets from any
+    commercial game. Built with Three.js. Runs fully offline.</div>
+  </div>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+  <div class="panel">
+    <div class="logo" style="font-size:44px">PAUSED</div>
+    <div id="pauseStats"></div>
+    <button class="btn" id="btnResume">▶ RESUME</button>
+    <button class="btn ghost" id="btnSaveQuit">💾 SAVE &amp; QUIT TO MENU</button>
+    <div class="foot">Progress saves automatically after every mission and when you quit.</div>
+  </div>
+</div>
+
+<div id="bustedScreen" class="screen hidden">
+  <div class="panel">
+    <div class="logo" style="font-size:52px">BUSTED</div>
+    <p class="story" style="text-align:center">The Solmar Police hauled you in. Bail cost you $300 — and a night in a cell.</p>
+    <button class="btn" id="btnBusted">↻ BACK ON THE STREETS</button>
+  </div>
+</div>
+
+<div id="deadScreen" class="screen hidden">
+  <div class="panel">
+    <div class="logo" style="font-size:52px">WASTED</div>
+    <p class="story" style="text-align:center">You got clipped on the streets of Solmar. Mara patched you up — minus $200 for the clinic.</p>
+    <button class="btn" id="btnDead">↻ GET UP</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
