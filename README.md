@@ -1,8 +1,8 @@
 # SOLMAR — Streets of the Sun
 
-[![Competition](https://make.fun/badge/gta6-01/competition)](https://make.fun/bounty/gta6-01)
-[![Rank](https://make.fun/badge/gta6-01/rank)](https://make.fun/bounty/gta6-01)
-[![Reward](https://make.fun/badge/gta6-01/reward)](https://make.fun/bounty/gta6-01)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An original open-world crime game for the **gta6-01** bounty: the most
 complete open-world crime game as static files. Fully original — its own
