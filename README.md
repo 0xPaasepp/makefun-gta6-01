@@ -5,9 +5,9 @@ An original open-world crime game for the make.fun **gta6-01** competition
 garage from the Vane family — steal a car, lose the cops in a Neon Sport,
 pull a harbour heist.
 
-[![gta6-01 competition](https://make.fun/competitions/gta6-01)](https://make.fun/competitions/gta6-01)
-[![gta6-01 leaderboard](https://make.fun/competitions/gta6-01/leaderboard)](https://make.fun/competitions/gta6-01/leaderboard)
-[![gta6-01 rewards](https://make.fun/competitions/gta6-01#rewards)](https://make.fun/competitions/gta6-01#rewards)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 ## Play
 
