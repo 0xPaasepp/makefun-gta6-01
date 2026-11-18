@@ -12,6 +12,7 @@ export class HUD {
       speed: document.getElementById('hud-speed'),
       mission: document.getElementById('hud-mission'),
       dialog: document.getElementById('dialogue'),
+      dialogPortrait: document.getElementById('dialogue-portrait'),
       dialogWho: document.getElementById('dialogue-who'),
       dialogText: document.getElementById('dialogue-text'),
       flash: document.getElementById('hud-flash'),
@@ -24,10 +25,22 @@ export class HUD {
     this.mapOpen = false;
   }
   setMissionText(t) { this.el.mission.textContent = t; }
+  // Illustrated SVG portraits, same style as the title-screen cast.
+  static PORTRAITS = {
+    DARIO: '<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a4a6a"/><circle cx="50" cy="38" r="18" fill="#e8b98a"/><path d="M32 30 Q50 12 68 30 L68 22 Q50 6 32 22Z" fill="#1a1a1a"/><rect x="34" y="36" width="8" height="3" fill="#1a1a1a"/><rect x="58" y="36" width="8" height="3" fill="#1a1a1a"/><path d="M42 52 Q50 56 58 52" stroke="#7a3b1e" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#ffffff"/></svg>',
+    MARA: '<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#6a2a4a"/><circle cx="50" cy="38" r="18" fill="#f0c8a0"/><path d="M30 40 Q28 12 50 10 Q72 12 70 40 Q70 26 60 20 Q50 16 40 20 Q30 26 30 40Z" fill="#4a2c14"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M44 52 Q50 56 56 52" stroke="#a03040" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#c0392b"/><circle cx="50" cy="74" r="3" fill="#ffd23d"/></svg>',
+    KITO: '<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a5a3a"/><circle cx="50" cy="38" r="18" fill="#c98d5f"/><path d="M32 34 Q50 16 68 34 L66 24 Q50 10 34 24Z" fill="#111111"/><rect x="32" y="26" width="36" height="5" fill="#222"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M40 52 Q50 58 60 52" stroke="#5a2a10" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#16a085"/><rect x="46" y="66" width="8" height="12" fill="#f1c40f"/></svg>',
+    'SOLMAR PD': '<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a2a4a"/><circle cx="50" cy="40" r="18" fill="#e8b98a"/><path d="M30 36 Q50 14 70 36 L70 28 Q50 12 30 28Z" fill="#16233f"/><rect x="30" y="28" width="40" height="6" fill="#0d1526"/><circle cx="50" cy="22" r="4" fill="#ffd23d"/><circle cx="43" cy="40" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="40" r="2.4" fill="#1a1a1a"/><path d="M42 54 Q50 57 58 54" stroke="#7a3b1e" stroke-width="2.5" fill="none"/><path d="M28 100 L32 64 Q50 56 68 64 L72 100Z" fill="#1a2a4a"/><rect x="46" y="68" width="8" height="10" fill="#ffd23d"/></svg>',
+    SOLMAR: '<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#e85d3d"/><circle cx="50" cy="50" r="30" fill="#ffd23d"/><circle cx="50" cy="50" r="22" fill="#ff9a3d"/><path d="M50 14 L50 24 M50 76 L50 86 M14 50 L24 50 M76 50 L86 50" stroke="#ffd23d" stroke-width="5"/></svg>',
+  };
   showDialogue(who, text, dur = 6) {
     this.el.dialogWho.textContent = who;
     this.el.dialogText.textContent = text;
-    this.el.dialog.style.display = 'block';
+    if (this.el.dialogPortrait) {
+      const key = String(who).toUpperCase();
+      this.el.dialogPortrait.innerHTML = HUD.PORTRAITS[key] || HUD.PORTRAITS.SOLMAR;
+    }
+    this.el.dialog.style.display = 'flex';
     this.dialogT = dur;
   }
   flash(text) {
