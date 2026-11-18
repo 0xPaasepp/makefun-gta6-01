@@ -1,46 +1,49 @@
-// save.js — localStorage save/load. Saves money, health, mission progress,
-// player position, wanted level and the clock. Versioned so old saves never
-// crash a new build.
+// Save / load through localStorage. One key, plain JSON, validated on read.
+import { CONFIG } from './config.js';
 
-import { SAVE_KEY } from './config.js';
-
-export function saveGame(state) {
+export function saveGame(snapshot) {
   try {
     const data = {
       version: 1,
       savedAt: Date.now(),
-      money: state.money,
-      health: state.health,
-      missionIndex: state.missionIndex,
-      stepIndex: state.stepIndex,
-      wanted: state.wanted,
-      player: { x: state.player.x, z: state.player.z, heading: state.player.heading },
-      minutes: state.minutes,
-      storyDone: state.storyDone,
+      money: snapshot.money,
+      health: snapshot.health,
+      armor: snapshot.armor,
+      mission: snapshot.mission,
+      missionStage: snapshot.missionStage,
+      player: { x: snapshot.player.x, z: snapshot.player.z, heading: snapshot.player.heading },
+      gameMinutes: snapshot.gameMinutes,
+      completedMissions: snapshot.completedMissions,
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    localStorage.setItem(CONFIG.saveKey, JSON.stringify(data));
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
 
 export function loadGame() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(CONFIG.saveKey);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data || data.version !== 1) return null;
+    if (typeof data.money !== 'number' || typeof data.mission !== 'number') return null;
+    if (!data.player || typeof data.player.x !== 'number' || typeof data.player.z !== 'number') return null;
     return data;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
 
 export function hasSave() {
-  try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
+  return loadGame() !== null;
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  try {
+    localStorage.removeItem(CONFIG.saveKey);
+  } catch {
+    // storage unavailable — nothing to clear
+  }
 }

@@ -1,92 +1,77 @@
-// combat.js — on-foot pistol combat. Click to shoot a hitscan ray from the
-// camera; guards and cops take damage, peds flee, tracers + muzzle flash sell it.
-
+// Pistol combat: a tracer from the muzzle to the hit point, damage on the
+// nearest target inside a narrow cone. Guards take 2 hits; a hit pedestrian
+// goes down. Shooting raises wanted (3 s cooldown between raises).
 import * as THREE from 'three';
 
 export class Combat {
-  constructor(scene, camera) {
+  constructor(scene, audio, game) {
     this.scene = scene;
-    this.camera = camera;
-    this.ammo = 12;
-    this.reserve = 48;
-    this.cooldown = 0;
-    this.reloadTimer = 0;
+    this.audio = audio;
+    this.game = game;
     this.tracers = [];
-    this.raycaster = new THREE.Raycaster();
+    this.lastWantedRaise = -10;
   }
 
-  get canShoot() { return this.cooldown <= 0 && this.reloadTimer <= 0 && this.ammo > 0; }
+  shoot(from, dir) {
+    this.audio.gunshot();
+    const origin = from.clone();
+    const d = dir.clone().normalize();
+    // Find the nearest living target inside a 12-degree cone, within 45 m.
+    let best = null;
+    let bestDist = 45;
+    for (const t of this.game.shootTargets()) {
+      if (t.hp <= 0) continue;
+      const to = new THREE.Vector3(t.x - origin.x, 1.1 - origin.y, t.z - origin.z);
+      const dist = to.length();
+      if (dist > 45 || dist < 0.5) continue;
+      to.normalize();
+      const cos = to.dot(d);
+      if (cos < 0.978) continue;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = t;
+      }
+    }
+    const end = origin.clone().addScaledVector(d, best ? bestDist : 45);
+    this.spawnTracer(origin, end);
+    if (best) {
+      best.hp -= 50;
+      if (best.hp <= 0) {
+        best.group.rotation.x = Math.PI / 2;
+        best.group.position.y = 0.3;
+        if (best.role === 'guard') this.game.onGuardDown(best);
+      }
+    }
+    const now = this.game.now;
+    if (now - this.lastWantedRaise > 3) {
+      this.lastWantedRaise = now;
+      this.game.police.addWanted(1);
+    }
+    return { hit: best, distance: bestDist };
+  }
 
-  reload() {
-    if (this.reloadTimer > 0 || this.ammo === 12 || this.reserve === 0) return false;
-    this.reloadTimer = 1.1;
-    return true;
+  spawnTracer(from, to) {
+    const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+    const line = new THREE.Line(
+      geo,
+      new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95 })
+    );
+    this.scene.add(line);
+    this.tracers.push({ line, life: 0.09 });
   }
 
   update(dt) {
-    this.cooldown = Math.max(0, this.cooldown - dt);
-    if (this.reloadTimer > 0) {
-      this.reloadTimer -= dt;
-      if (this.reloadTimer <= 0) {
-        const need = 12 - this.ammo;
-        const take = Math.min(need, this.reserve);
-        this.ammo += take;
-        this.reserve -= take;
-      }
-    }
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const t = this.tracers[i];
       t.life -= dt;
-      t.mesh.material.opacity = Math.max(0, t.life / 0.12);
       if (t.life <= 0) {
-        this.scene.remove(t.mesh);
+        this.scene.remove(t.line);
+        t.line.geometry.dispose();
+        t.line.material.dispose();
         this.tracers.splice(i, 1);
+      } else {
+        t.line.material.opacity = t.life / 0.09;
       }
     }
-  }
-
-  // Shoot from the camera through the screen centre. targets: array of Person.
-  // Returns { hit, killed, target }.
-  shoot(origin, targets, onShot) {
-    if (!this.canShoot) return null;
-    this.cooldown = 0.28;
-    this.ammo -= 1;
-    if (onShot) onShot();
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    this.raycaster.set(origin, dir);
-    this.raycaster.far = 90;
-    const meshes = [];
-    const byMesh = new Map();
-    for (const t of targets) {
-      if (!t.alive) continue;
-      t.mesh.traverse((m) => { if (m.isMesh) { meshes.push(m); byMesh.set(m, t); } });
-    }
-    const hits = this.raycaster.intersectObjects(meshes, false);
-    const end = origin.clone().add(dir.clone().multiplyScalar(90));
-    let result = { hit: false, killed: false, target: null };
-    if (hits.length > 0) {
-      const h = hits[0];
-      end.copy(h.point);
-      const target = byMesh.get(h.object);
-      if (target) {
-        const killed = target.damage(34 + Math.floor(Math.random() * 20));
-        result = { hit: true, killed, target };
-      }
-    }
-    // Tracer line from the gun to the hit point.
-    const geo = new THREE.BufferGeometry().setFromPoints([origin.clone(), end]);
-    const mat = new THREE.LineBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 1 });
-    const line = new THREE.Line(geo, mat);
-    this.scene.add(line);
-    this.tracers.push({ mesh: line, life: 0.12 });
-    return result;
-  }
-
-  // Enemy shot at the player: returns damage dealt (with miss chance at range).
-  enemyShot(shooter, distance) {
-    const missChance = Math.min(0.55, distance / 70);
-    if (Math.random() < missChance) return 0;
-    return 6 + Math.floor(Math.random() * 9);
   }
 }

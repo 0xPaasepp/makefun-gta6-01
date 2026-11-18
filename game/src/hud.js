@@ -1,181 +1,178 @@
-// hud.js — the DOM HUD (health, money, wanted stars, clock, objectives, toasts,
-// dialogues) and the circular minimap drawn on a 2D canvas.
-
-import { WORLD } from './config.js';
-
-export class HUD {
+// HUD: money / health / armor / wanted stars / clock / mission text /
+// prompts / dialogue, plus a live circular minimap (canvas 2D) with the
+// mission blip, police dots and traffic dots.
+export class Hud {
   constructor() {
-    this.el = {};
-    for (const id of ['hud', 'objectiveText', 'objectiveSub', 'missionTitle', 'clock', 'money',
-      'wanted', 'healthFill', 'ammo', 'speed', 'speedo', 'carName', 'toastBig', 'toastSmall',
-      'hint', 'crosshair', 'damage', 'dialog', 'dialogName', 'dialogText', 'interact',
-      'minimap', 'startScreen', 'pauseScreen', 'bustedScreen', 'deadScreen', 'pauseStats',
-      'btnContinue', 'continueInfo']) {
-      this.el[id] = document.getElementById(id);
+    this.el = (id) => document.getElementById(id);
+    this.money = this.el('hud-money');
+    this.speed = this.el('hud-speed');
+    this.healthBar = this.el('hud-health-bar');
+    this.healthText = this.el('hud-health-text');
+    this.armorBar = this.el('hud-armor-bar');
+    this.stars = this.el('hud-stars');
+    this.clock = this.el('hud-clock');
+    this.missionTitle = this.el('hud-mission-title');
+    this.missionText = this.el('hud-mission-text');
+    this.prompt = this.el('hud-prompt');
+    this.dialogue = this.el('hud-dialogue');
+    this.dialogueText = this.el('hud-dialogue-text');
+    this.minimap = this.el('minimap');
+    this.mapCtx = this.minimap.getContext('2d');
+    this.dialogueTimer = 0;
+  }
+
+  showScreen(name) {
+    for (const id of ['screen-start', 'screen-pause', 'screen-busted', 'screen-wasted']) {
+      const e = this.el(id);
+      if (e) e.classList.toggle('hidden', id !== `screen-${name}`);
     }
-    this.mapCtx = this.el.minimap.getContext('2d');
-    this.toastTimer = null;
-    this.dialogTimer = null;
-    this.hintTimer = null;
-    this.gameMinutes = 9 * 60; // 09:00
+    const hud = this.el('hud');
+    if (hud) hud.classList.toggle('hidden', name === 'start');
   }
 
-  show() { this.el.hud.classList.remove('hidden'); }
-  hide() { this.el.hud.classList.add('hidden'); }
-
-  setObjective(title, text, sub) {
-    this.el.missionTitle.textContent = title || 'Solmar City';
-    this.el.objectiveText.textContent = text || '';
-    this.el.objectiveSub.textContent = sub || '';
+  setDialogue(text, seconds = 4) {
+    if (!text) {
+      this.dialogue.classList.add('hidden');
+      return;
+    }
+    this.dialogueText.textContent = text;
+    this.dialogue.classList.remove('hidden');
+    this.dialogueTimer = seconds;
   }
 
-  setHealth(h) {
-    this.el.healthFill.style.width = Math.max(0, Math.min(100, h)) + '%';
-    this.el.healthFill.style.background = h > 50
-      ? 'linear-gradient(90deg,#37e05a,#a5ff6e)'
-      : h > 25 ? 'linear-gradient(90deg,#e0a537,#ffd23f)' : 'linear-gradient(90deg,#e03737,#ff6e6e)';
+  formatMoney(n) {
+    return `$${Math.floor(n).toLocaleString('en-US')}`;
   }
 
-  setMoney(m) { this.el.money.textContent = '$ ' + Math.floor(m).toLocaleString('en-US'); }
-
-  setWanted(stars) {
-    let s = '';
-    for (let i = 0; i < 5; i++) s += i < stars ? '★' : '☆';
-    this.el.wanted.innerHTML = stars > 0 ? `<span class="lit">${s}</span>` : `<span style="opacity:.35">${s}</span>`;
+  formatClock(minutes) {
+    const h = Math.floor(minutes / 60) % 24;
+    const m = Math.floor(minutes % 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
-  setAmmo(ammo, reserve) {
-    this.el.ammo.innerHTML = '🔫 ' + ammo + ' / ' + reserve;
-  }
-
-  setSpeed(kmh, carName) {
-    if (carName) {
-      this.el.speedo.classList.remove('hidden');
-      this.el.speed.textContent = Math.round(kmh);
-      this.el.carName.textContent = carName;
+  update(s, dt) {
+    this.money.textContent = this.formatMoney(s.money);
+    this.speed.textContent = s.inCar ? `${Math.round(s.speedKmh)} km/h` : '';
+    this.healthBar.style.width = `${Math.max(0, s.health)}%`;
+    this.healthText.textContent = `${Math.ceil(Math.max(0, s.health))}`;
+    this.armorBar.style.width = `${Math.max(0, s.armor)}%`;
+    let stars = '';
+    for (let i = 0; i < 5; i++) stars += i < s.wanted ? '★' : '☆';
+    this.stars.textContent = stars;
+    this.stars.classList.toggle('hot', s.wanted > 0);
+    this.clock.textContent = this.formatClock(s.gameMinutes);
+    this.missionTitle.textContent = s.missionTitle;
+    this.missionText.textContent = s.missionText;
+    if (s.prompt) {
+      this.prompt.textContent = s.prompt;
+      this.prompt.classList.remove('hidden');
     } else {
-      this.el.speedo.classList.add('hidden');
+      this.prompt.classList.add('hidden');
     }
-  }
-
-  setCrosshair(on) { this.el.crosshair.classList.toggle('hidden', !on); }
-
-  flashDamage() {
-    this.el.damage.style.opacity = '1';
-    setTimeout(() => { this.el.damage.style.opacity = '0'; }, 130);
-  }
-
-  toast(big, small, ms) {
-    this.el.toastBig.textContent = big || '';
-    this.el.toastSmall.textContent = small || '';
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => {
-      this.el.toastBig.textContent = '';
-      this.el.toastSmall.textContent = '';
-    }, ms || 2600);
-  }
-
-  hint(text, ms) {
-    this.el.hint.textContent = text || '';
-    clearTimeout(this.hintTimer);
-    if (text) {
-      this.hintTimer = setTimeout(() => { this.el.hint.textContent = ''; }, ms || 4000);
+    if (this.dialogueTimer > 0) {
+      this.dialogueTimer -= dt;
+      if (this.dialogueTimer <= 0) this.dialogue.classList.add('hidden');
     }
+    this.drawMinimap(s);
   }
 
-  dialog(name, text, ms) {
-    this.el.dialogName.textContent = name || '';
-    this.el.dialogText.textContent = text || '';
-    this.el.dialog.classList.remove('hidden');
-    clearTimeout(this.dialogTimer);
-    this.dialogTimer = setTimeout(() => this.el.dialog.classList.add('hidden'), ms || 6000);
-  }
-
-  interact(text) {
-    if (text) { this.el.interact.textContent = text; this.el.interact.classList.remove('hidden'); }
-    else this.el.interact.classList.add('hidden');
-  }
-
-  tickClock(dt) {
-    this.gameMinutes += dt * 2.2; // game clock runs ~2x real time
-    const total = Math.floor(this.gameMinutes) % (24 * 60);
-    const hh = String(Math.floor(total / 60)).padStart(2, '0');
-    const mm = String(total % 60).padStart(2, '0');
-    this.el.clock.textContent = hh + ':' + mm;
-  }
-
-  // --- Minimap ---------------------------------------------------------------
-  drawMinimap(city, player, cars, policeCars, cops, guards, spot) {
+  drawMinimap(s) {
     const ctx = this.mapCtx;
-    const S = 190;
-    const scale = S / (WORLD.size + 40);
-    const toMap = (x, z) => [S / 2 + x * scale, S / 2 + z * scale];
-    ctx.clearRect(0, 0, S, S);
-    // sea + sand at the bottom
-    ctx.fillStyle = '#1e7fb8';
-    ctx.fillRect(0, S - 14, S, 14);
-    ctx.fillStyle = '#e8d49a';
-    ctx.fillRect(0, S - 18, S, 4);
-    // blocks
-    ctx.fillStyle = '#3a4a3a';
-    for (const b of city.buildings) {
-      const [x, y] = toMap(b.x - b.w / 2, b.z - b.d / 2);
-      ctx.fillRect(x, y, Math.max(1.5, b.w * scale), Math.max(1.5, b.d * scale));
-    }
-    // roads
-    ctx.strokeStyle = '#5a6068';
-    ctx.lineWidth = 4;
-    for (let c = -168; c <= 168; c += 42) {
-      ctx.beginPath(); ctx.moveTo(...toMap(c, -210)); ctx.lineTo(...toMap(c, 210)); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(...toMap(-210, c)); ctx.lineTo(...toMap(210, c)); ctx.stroke();
-    }
-    // mission marker
-    if (spot) {
-      const [x, y] = toMap(spot.x, spot.z);
-      const pulse = 6 + Math.sin(performance.now() * 0.005) * 2;
-      ctx.fillStyle = '#ffd23f';
-      ctx.beginPath(); ctx.arc(x, y, pulse, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, pulse + 3, 0, Math.PI * 2); ctx.stroke();
-    }
-    // cash drops are drawn by the game via dots when close — skipped here.
-    // traffic (grey), police (blue/red), guards (red)
-    ctx.fillStyle = '#c8c8c8';
-    for (const car of cars) {
-      const [x, y] = toMap(car.mesh.position.x, car.mesh.position.z);
-      ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-    }
-    for (const pc of policeCars) {
-      const [x, y] = toMap(pc.mesh.position.x, pc.mesh.position.z);
-      ctx.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#ff3b30' : '#3b82ff';
-      ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#c8c8c8';
-    }
-    ctx.fillStyle = '#ff3b30';
-    for (const g of guards) {
-      const [x, y] = toMap(g.pos.x, g.pos.z);
-      ctx.fillRect(x - 2, y - 2, 4, 4);
-    }
-    // player arrow (rotates with heading)
-    const [px, py] = toMap(player.x, player.z);
+    const W = this.minimap.width;
+    const H = this.minimap.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const R = W / 2;
+    const scale = R / 210;
+    const toMap = (x, z) => [cx + x * scale, cy + z * scale];
+    ctx.clearRect(0, 0, W, H);
     ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(-player.heading);
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(0, -8); ctx.lineTo(5.5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5.5, 6); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
-    // view cone
+    ctx.arc(cx, cy, R - 1, 0, Math.PI * 2);
+    ctx.clip();
+    // Sea east.
+    ctx.fillStyle = '#155a80';
+    ctx.fillRect(cx + 200 * scale, 0, W, H);
+    // Land.
+    ctx.fillStyle = '#20262e';
+    ctx.fillRect(0, 0, W, H);
+    // Roads.
+    ctx.strokeStyle = '#5a636e';
+    ctx.lineWidth = 2;
+    for (const c of [-150, -100, -50, 0, 50, 100, 150]) {
+      const [x1] = toMap(c, 0);
+      ctx.beginPath();
+      ctx.moveTo(x1, 0);
+      ctx.lineTo(x1, H);
+      ctx.stroke();
+      const [, y1] = toMap(0, c);
+      ctx.beginPath();
+      ctx.moveTo(0, y1);
+      ctx.lineTo(W, y1);
+      ctx.stroke();
+    }
+    // Plaza.
+    ctx.fillStyle = '#8a7a58';
+    const [px, pz] = toMap(0, 0);
+    ctx.beginPath();
+    ctx.arc(px, pz, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // Mission blip (pulsing yellow).
+    if (s.missionMarker) {
+      const [mx, mz] = toMap(s.missionMarker.x, s.missionMarker.z);
+      const pulse = 4 + Math.sin(s.now * 5) * 2;
+      ctx.fillStyle = '#ffd23a';
+      ctx.beginPath();
+      ctx.arc(mx, mz, pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // Guards (red), police (blue), traffic (grey).
+    for (const g of s.guards || []) {
+      if (g.hp <= 0) continue;
+      const [gx, gz] = toMap(g.x, g.z);
+      ctx.fillStyle = '#ff4a4a';
+      ctx.fillRect(gx - 2, gz - 2, 4, 4);
+    }
+    for (const c of s.cops || []) {
+      const [gx, gz] = toMap(c.x, c.z);
+      ctx.fillStyle = '#4a8aff';
+      ctx.fillRect(gx - 2, gz - 2, 4, 4);
+    }
+    for (const c of s.cruisers || []) {
+      const [gx, gz] = toMap(c.x, c.z);
+      ctx.fillStyle = '#7ab8ff';
+      ctx.beginPath();
+      ctx.arc(gx, gz, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (const c of s.traffic || []) {
+      const [gx, gz] = toMap(c.x, c.z);
+      ctx.fillStyle = '#9aa4ae';
+      ctx.fillRect(gx - 1, gz - 1, 2, 2);
+    }
+    // Player arrow (white, rotated by heading).
+    const [ux, uz] = toMap(s.player.x, s.player.z);
     ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(-player.heading);
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.translate(ux, uz);
+    // Map +x is right, +z is down; the arrow points up, so rotate PI - h.
+    ctx.rotate(Math.PI - s.player.heading);
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(0, 0); ctx.arc(0, 0, 42, -0.5, 0.5); ctx.closePath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(5, 6);
+    ctx.lineTo(-5, 6);
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
+    ctx.restore();
+    // Ring.
+    ctx.strokeStyle = '#e8e8e8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R - 1, 0, Math.PI * 2);
+    ctx.stroke();
   }
 }
