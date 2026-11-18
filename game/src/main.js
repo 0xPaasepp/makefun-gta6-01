@@ -1,89 +1,39 @@
-// SOLMAR bootstrap: create the game, wire the screens, expose a small
-// debug API (window.SOLMAR) used by the playtest and the screenshots.
+// SOLMAR — Streets of the Sun. Entry point: boots the game, exposes the
+// debug API used by the playtest and screenshot scripts, and runs the loop.
+// Static files only, no network requests.
+
 import { Game } from './game.js';
 
 const game = new Game();
 
-function wire(id, fn) {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('click', fn);
+function startLoop() {
+  const tick = (now) => {
+    game.frame(now);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
+startLoop();
 
-wire('btn-new', () => game.startNew());
-wire('btn-continue', () => game.startContinue());
-wire('btn-resume', () => {
-  game.state = 'playing';
-  game.hud.showScreen('playing');
-});
-wire('btn-restart', () => game.startNew());
-wire('btn-retry-busted', () => {
-  game.state = 'playing';
-  game.hud.showScreen('playing');
-});
-wire('btn-retry-wasted', () => {
-  game.state = 'playing';
-  game.hud.showScreen('playing');
-});
-wire('btn-menu', () => {
-  game.state = 'menu';
-  game.hud.showScreen('start');
-  game.updateStartButtons();
-});
-
-game.loop();
-
-// Debug API for the playtest and screenshots (not part of gameplay).
+// Debug / automation API. Player heading forward is (sin h, cos h);
+// default heading PI faces north (-z).
 window.SOLMAR = {
   game,
   snapshot: () => game.snapshot(),
-  state: () => game.state,
-  startNew: () => game.startNew(),
-  teleport: (x, z) => {
-    if (game.player.car) game.exitCar();
-    game.player.x = x;
-    game.player.z = z;
-    game.playerMesh.position.set(x, 0, z);
-  },
-  setHeading: (h) => {
-    game.player.heading = h;
-  },
-  faceCamera: () => {
-    game.debugFrontCam = true;
-  },
-  followCamera: () => {
-    game.debugFrontCam = false;
-  },
-  enterNearestCar: () => {
-    const car = game.nearestParkedCar(6);
-    if (car) game.enterCar(car);
-    return car ? car.model.id : null;
-  },
+  state: () => game.state(),
+  startNew: (fromSave = false) => game.startNew(fromSave),
+  teleport: (x, z) => game.teleport(x, z),
+  setHeading: (h) => game.setHeading(h),
+  faceCamera: () => game.faceCamera(),
+  followCamera: () => game.followCamera(),
+  enterNearestCar: () => game.enterNearestCar(),
   exitCar: () => game.exitCar(),
-  teleportCar: (x, z, heading) => {
-    if (!game.player.car) return false;
-    game.player.car.x = x;
-    game.player.car.z = z;
-    if (heading !== undefined) game.player.car.heading = heading;
-    game.player.x = x;
-    game.player.z = z;
-    game.player.heading = game.player.car.heading;
-    game.player.car.sync();
-    return true;
-  },
-  setWanted: (n) => game.police.setWanted(n),
-  setMission: (index, stage) => {
-    game.missions.index = index;
-    game.missions.stage = stage;
-  },
-  setMoney: (n) => {
-    game.money = n;
-  },
-  setSpeed: (v) => {
-    if (game.player.car) game.player.car.speed = v;
-  },
-  showDialogue: (text, seconds) => game.hud.setDialogue(text, seconds ?? 5),
-  shoot: () => {
-    const from = { x: game.player.x, z: game.player.z };
-    return from;
-  },
+  setWanted: (n) => game.setWanted(n),
+  setMission: (i, stage = 0) => game.missions.setMission(i, stage),
+  setMoney: (n) => game.setMoney(n),
+  setSpeed: (v) => game.setSpeed(v),
+  setTime: (h) => { game.hour = h; game.city.update(h); },
+  showDialogue: (text, sec = 5, who = 'Kito') => game.hud.showDialogue(text, who, sec),
+  shoot: () => game.combat.shoot(),
+  save: () => game.saveGame(),
 };

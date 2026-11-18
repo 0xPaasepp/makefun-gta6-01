@@ -1,68 +1,48 @@
-// Keyboard input. `pressed` is edge-triggered and cleared by endFrame(),
-// which the game loop calls EVERY frame in EVERY state (menu, playing,
-// paused, busted, wasted) so a key can never stick across a state change.
+// SOLMAR — input. Keyboard + mouse state. WASD/arrows drive and walk,
+// E enters/exits cars, Space handbrake, R reload, M map, P/Esc pause,
+// click fires the pistol.
+
 export class Input {
   constructor() {
-    this.held = Object.create(null);
-    this.pressed = Object.create(null);
-    this.onKeyDown = (e) => {
-      if (e.repeat) return;
-      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      this.held[k] = true;
-      this.pressed[k] = true;
-      if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+    this.keys = {};
+    this.mouseDown = false;
+    this.mouseDX = 0;
+    this._listeners = [];
+    const kd = (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      this.keys[e.key.toLowerCase()] = true;
+      this._fire('keydown', e);
     };
-    this.onKeyUp = (e) => {
-      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      this.held[k] = false;
-    };
-    this.onMouseDown = (e) => {
-      if (e.button === 0) {
-        this.held.mouse = true;
-        this.pressed.mouse = true;
-      }
-    };
-    this.onMouseUp = (e) => {
-      if (e.button === 0) this.held.mouse = false;
-    };
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-    window.addEventListener('mousedown', this.onMouseDown);
-    window.addEventListener('mouseup', this.onMouseUp);
+    const ku = (e) => { this.keys[e.key.toLowerCase()] = false; };
+    const md = (e) => { this.mouseDown = true; this._fire('mousedown', e); };
+    const mu = () => { this.mouseDown = false; };
+    const mm = (e) => { this.mouseDX = e.movementX || 0; };
+    window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
+    window.addEventListener('mousedown', md);
+    window.addEventListener('mouseup', mu);
+    window.addEventListener('mousemove', mm);
+    this._listeners.push(['keydown', kd], ['keyup', ku], ['mousedown', md], ['mouseup', mu], ['mousemove', mm]);
   }
 
-  isDown(...keys) {
-    return keys.some((k) => !!this.held[k]);
+  on(evt, fn) {
+    this._handlers = this._handlers || {};
+    (this._handlers[evt] = this._handlers[evt] || []).push(fn);
   }
 
-  wasPressed(...keys) {
-    return keys.some((k) => !!this.pressed[k]);
+  _fire(evt, e) {
+    const hs = (this._handlers || {})[evt] || [];
+    for (const h of hs) h(e);
   }
 
-  // Movement vector in camera space: x = strafe, y = forward.
-  moveVector() {
-    let x = 0;
-    let y = 0;
-    if (this.isDown('w', 'ArrowUp')) y += 1;
-    if (this.isDown('s', 'ArrowDown')) y -= 1;
-    if (this.isDown('a', 'ArrowLeft')) x -= 1;
-    if (this.isDown('d', 'ArrowRight')) x += 1;
-    const len = Math.hypot(x, y);
-    if (len > 0) {
-      x /= len;
-      y /= len;
-    }
-    return { x, y };
-  }
-
-  endFrame() {
-    this.pressed = Object.create(null);
-  }
-
-  dispose() {
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('mousedown', this.onMouseDown);
-    window.removeEventListener('mouseup', this.onMouseUp);
+  isDown(...names) { return names.some((n) => !!this.keys[n]); }
+  get up() { return this.isDown('w', 'arrowup'); }
+  get down() { return this.isDown('s', 'arrowdown'); }
+  get left() { return this.isDown('a', 'arrowleft'); }
+  get right() { return this.isDown('d', 'arrowright'); }
+  pressed(name) {
+    const k = name.toLowerCase();
+    if (this.keys[k]) { this.keys[k] = false; return true; }
+    return false;
   }
 }

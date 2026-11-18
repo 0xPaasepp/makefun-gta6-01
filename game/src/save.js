@@ -1,49 +1,30 @@
-// Save / load through localStorage. One key, plain JSON, validated on read.
-import { CONFIG } from './config.js';
+// SOLMAR — save. localStorage autosave (every 30s + on mission complete),
+// Continue restores money, mission, position, health and time of day.
 
-export function saveGame(snapshot) {
+export const SAVE_KEY = 'solmar-save-v1';
+
+export function saveGameData(data) {
   try {
-    const data = {
-      version: 1,
-      savedAt: Date.now(),
-      money: snapshot.money,
-      health: snapshot.health,
-      armor: snapshot.armor,
-      mission: snapshot.mission,
-      missionStage: snapshot.missionStage,
-      player: { x: snapshot.player.x, z: snapshot.player.z, heading: snapshot.player.heading },
-      gameMinutes: snapshot.gameMinutes,
-      completedMissions: snapshot.completedMissions,
-    };
-    localStorage.setItem(CONFIG.saveKey, JSON.stringify(data));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     return true;
-  } catch {
-    return false;
-  }
+  } catch (e) { return false; }
 }
 
-export function loadGame() {
+export function loadGameData() {
   try {
-    const raw = localStorage.getItem(CONFIG.saveKey);
+    const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data || data.version !== 1) return null;
-    if (typeof data.money !== 'number' || typeof data.mission !== 'number') return null;
-    if (!data.player || typeof data.player.x !== 'number' || typeof data.player.z !== 'number') return null;
-    return data;
-  } catch {
-    return null;
-  }
+    const d = JSON.parse(raw);
+    if (typeof d !== 'object' || d === null) return null;
+    if (typeof d.money !== 'number' || typeof d.missionIndex !== 'number') return null;
+    return d;
+  } catch (e) { return null; }
 }
 
 export function hasSave() {
-  return loadGame() !== null;
+  try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
 }
 
 export function clearSave() {
-  try {
-    localStorage.removeItem(CONFIG.saveKey);
-  } catch {
-    // storage unavailable — nothing to clear
-  }
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
 }

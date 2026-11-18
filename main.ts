@@ -1,25 +1,33 @@
-// SOLMAR entrypoint: copies game/ + screenshots/ into the output directory
-// and writes /output/dossier.json from the vendored make.fun library.
-// Node standard library only; runs as `node main.ts` (erasable TypeScript).
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+// SOLMAR — Streets of the Sun, make.fun gta6-01 entry (Node 22, standard
+// library only). Hands in the game: copies game/ and screenshots/ from
+// beside this file to /output (or MAKEFUN_OUTPUT_DIR outside the grader)
+// and writes /output/dossier.json with the vendored make.fun library.
+
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-const repoRoot = dirname(fileURLToPath(import.meta.url));
-const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const here = fileURLToPath(new URL('.', import.meta.url));
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-rmSync(outDir, { recursive: true, force: true });
-mkdirSync(outDir, { recursive: true });
-cpSync(join(repoRoot, 'game'), join(outDir, 'game'), { recursive: true });
-cpSync(join(repoRoot, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
+mkdirSync(out, { recursive: true });
+cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
+mkdirSync(join(out, 'screenshots'), { recursive: true });
+if (existsSync(join(here, 'screenshots'))) {
+  cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+}
 
-const dossier = buildDossier(outDir, {
+// The scorer's own caps (reference/gate.json): only text_max_bytes shapes
+// the bytes; the others refuse an entry the scorer would refuse (more than
+// 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB
+// of game files in all, or a path under game/ over 1000 bytes).
+const dossier = buildDossier(out, {
   text_max_bytes: 163840,
   screenshots: { max: 4, max_bytes: 262144 },
   game_max_files: 993,
   game_max_bytes: 50331648,
+  game_path_max_bytes: 1000,
 });
-writeFileSync(join(outDir, 'dossier.json'), dossier);
-const check = JSON.parse(readFileSync(join(outDir, 'dossier.json'), 'utf8'));
-console.log(`SOLMAR: wrote ${outDir} (dossier ${dossier.length} bytes, keys: ${Object.keys(check).join(', ')})`);
+writeFileSync(join(out, 'dossier.json'), dossier);
+console.log(`SOLMAR handed in: ${out} (dossier ${dossier.length} bytes)`);

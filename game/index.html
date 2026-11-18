@@ -5,101 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SOLMAR — Streets of the Sun</title>
 <style>
-  html, body { margin: 0; padding: 0; overflow: hidden; background: #0a0e14; font-family: Arial, Helvetica, sans-serif; color: #fff; }
-  #game-canvas, #game-canvas canvas { position: fixed; inset: 0; display: block; }
-  .hidden { display: none !important; }
-  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-  .panel { background: rgba(8, 12, 18, 0.62); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 8px 12px; }
-  #hud-topleft { position: absolute; top: 12px; left: 12px; min-width: 210px; }
-  #hud-money { font-size: 26px; font-weight: bold; color: #7dff8a; }
-  #hud-speed { font-size: 20px; margin-top: 2px; color: #fff; min-height: 24px; }
-  .bar-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 12px; }
-  .bar { flex: 1; height: 10px; background: rgba(255,255,255,0.18); border-radius: 5px; overflow: hidden; }
-  .bar > div { height: 100%; }
-  #hud-health-bar { background: #37d67a; width: 100%; }
-  #hud-armor-bar { background: #4aa8ff; width: 0%; }
-  #hud-topright { position: absolute; top: 12px; right: 12px; text-align: right; }
-  #hud-stars { font-size: 26px; letter-spacing: 2px; color: #ffd23a; }
-  #hud-stars.hot { color: #ff5a3a; text-shadow: 0 0 8px #ff5a3a; }
-  #hud-clock { font-size: 18px; margin-top: 2px; }
-  #hud-mission { position: absolute; left: 12px; bottom: 12px; max-width: 380px; }
-  #hud-mission-title { font-size: 16px; font-weight: bold; color: #ffd23a; }
-  #hud-mission-text { font-size: 13px; margin-top: 3px; line-height: 1.4; }
-  #hud-prompt { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); font-size: 15px; padding: 8px 16px; }
-  #hud-dialogue { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); max-width: 520px; font-size: 15px; line-height: 1.45; border-left: 4px solid #ffd23a; }
-  #hud-dialogue-text b { color: #ffd23a; }
-  #minimap-wrap { position: absolute; right: 12px; bottom: 12px; }
-  #minimap { width: 180px; height: 180px; border-radius: 50%; background: #20262e; }
-  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(6, 10, 16, 0.72); text-align: center; padding: 20px; }
-  .screen h1 { font-size: 52px; margin: 0; letter-spacing: 2px; color: #ffd23a; text-shadow: 0 3px 0 #7a4a00, 0 6px 18px rgba(0,0,0,0.6); }
-  .screen h2 { font-size: 18px; font-weight: normal; color: #cfe8ff; margin: 10px 0 22px; }
-  .screen p { max-width: 560px; line-height: 1.55; font-size: 15px; color: #dfe8f0; }
-  .screen button { pointer-events: auto; font-size: 18px; padding: 12px 30px; margin: 6px; border-radius: 8px; border: none; cursor: pointer; background: #ffd23a; color: #1a1400; font-weight: bold; }
-  .screen button.secondary { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.35); }
-  .controls { font-size: 13px; color: #9fb4c8; margin-top: 18px; line-height: 1.7; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a0b2e; }
+  #app { position: fixed; inset: 0; }
+  #app canvas { display: block; }
 </style>
-<script type="importmap">
-{ "imports": { "three": "./vendor/three.module.min.js" } }
-</script>
 </head>
 <body>
-<div id="game-canvas"></div>
-
-<div id="hud" class="hidden">
-  <div id="hud-topleft" class="panel">
-    <div id="hud-money">$150</div>
-    <div id="hud-speed"></div>
-    <div class="bar-row"><span>HP</span><div class="bar"><div id="hud-health-bar"></div></div><span id="hud-health-text">100</span></div>
-    <div class="bar-row"><span>AR</span><div class="bar"><div id="hud-armor-bar"></div></div></div>
-  </div>
-  <div id="hud-topright" class="panel">
-    <div id="hud-stars">☆☆☆☆☆</div>
-    <div id="hud-clock">09:00</div>
-  </div>
-  <div id="hud-mission" class="panel">
-    <div id="hud-mission-title">Mission 1 — A Car for Mara</div>
-    <div id="hud-mission-text"></div>
-  </div>
-  <div id="hud-prompt" class="panel hidden"></div>
-  <div id="hud-dialogue" class="panel hidden"><span id="hud-dialogue-text"></span></div>
-  <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas></div>
-</div>
-
-<div id="screen-start" class="screen">
-  <h1>SOLMAR</h1>
-  <h2>Streets of the Sun — an original open-world crime game</h2>
-  <p>You are <b>Dario Voss</b>, wheelman of Solmar. Your sister Mara needs a car,
-  the Neon Sport is waiting at the marina, and the Vane family keeps $3,500 in
-  cash at the docks. Steal, drive, lose the cops — and take the harbour.</p>
-  <div>
-    <button id="btn-new">New Game</button>
-    <button id="btn-continue" class="secondary hidden">Continue</button>
-  </div>
-  <div class="controls">WASD move &amp; drive &nbsp;•&nbsp; E get in / out of a car &nbsp;•&nbsp; Click or Space shoot &nbsp;•&nbsp; Shift run &nbsp;•&nbsp; P pause &nbsp;•&nbsp; M radio</div>
-</div>
-
-<div id="screen-pause" class="screen hidden">
-  <h1>PAUSED</h1>
-  <p>Solmar waits for no one. Well — right now it does.</p>
-  <div>
-    <button id="btn-resume">Resume</button>
-    <button id="btn-restart" class="secondary">Restart</button>
-    <button id="btn-menu" class="secondary">Main Menu</button>
-  </div>
-</div>
-
-<div id="screen-busted" class="screen hidden">
-  <h1>BUSTED</h1>
-  <p>The Solmar PD caught up with you. You paid a $100 fine and walked out of the station.</p>
-  <div><button id="btn-retry-busted">Get Back Out There</button></div>
-</div>
-
-<div id="screen-wasted" class="screen hidden">
-  <h1>WASTED</h1>
-  <p>You went down in the streets of Solmar. The hospital patched you up — minus $100.</p>
-  <div><button id="btn-retry-wasted">Get Back Out There</button></div>
-</div>
-
+<div id="app"></div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
