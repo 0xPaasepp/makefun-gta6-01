@@ -1,47 +1,46 @@
-// SOLMAR · main.js — bootstrap: build the game, wire the start screen,
-// expose the window.SOLMAR debug API used by playtests and screenshots.
+// SOLMAR bootstrap — creates the game, wires start/continue buttons,
+// exposes window.SOLMAR + window.__solmar debug API (playtests use it).
 import { Game } from './game.js';
-import { hasSave } from './save.js';
+import { DIALOGUES } from './config.js';
 
 const game = new Game();
+game.init();
 
-const startScreen = document.getElementById('start-screen');
-const btnNew = document.getElementById('btn-new');
-const btnContinue = document.getElementById('btn-continue');
-
-if (hasSave()) {
-  btnContinue.style.display = 'inline-block';
-  btnContinue.textContent = 'CONTINUE — PICK UP WHERE YOU LEFT OFF';
-} else {
-  btnContinue.style.display = 'none';
-}
-btnNew.addEventListener('click', () => game.startNew());
-btnContinue.addEventListener('click', () => game.continueGame());
-
-// Also allow Enter on the start screen to start a new game.
-window.addEventListener('keydown', (e) => {
-  if (!game.started && e.code === 'Enter') game.startNew();
-});
-
-// ?autostart=1 intentionally does nothing: the game starts via
-// window.SOLMAR.startNew() (start screen button or debug call).
-window.SOLMAR = {
+const api = {
   game,
-  snapshot: () => game.snapshot(),
   state: () => game.state(),
   startNew: () => game.startNew(),
+  continueGame: () => game.continueGame(),
   teleport: (x, z) => game.teleport(x, z),
   setHeading: (h) => game.setHeading(h),
   faceCamera: () => game.faceCamera(),
   followCamera: () => game.followCamera(),
-  enterNearestCar: () => game.enterNearestCar(6),
+  enterNearestCar: () => game.tryEnterCar(),
   exitCar: () => game.exitCar(),
   setWanted: (n) => game.setWanted(n),
-  setMission: (i, stage) => game.setMission(i, stage === undefined ? 0 : stage),
+  setTimeOfDay: (h) => game.setTimeOfDay(h),
+  setMission: (i) => game.setMission(i),
   setMoney: (n) => game.setMoney(n),
-  setSpeed: (v) => game.setSpeed(v),
-  showDialogue: (text, sec) => game.showDialogue({ who: 'Kito', text }, sec || 5),
-  shoot: () => game.shoot(),
+  setSpeed: (s) => game.setSpeed(s),
+  showDialogue: (text, who) => game.showDialogue(text, who),
+  shoot: () => game.combat.shoot(),
+  aimAt: (x, z) => game.aimAt(x, z),
+  snapshot: () => game.state(),
 };
-window.__solmar = window.SOLMAR;
-startScreen.classList.add('ready');
+window.SOLMAR = api;
+window.__solmar = api;
+
+document.getElementById('btn-start').addEventListener('click', () => game.startNew());
+document.getElementById('btn-continue').addEventListener('click', () => game.continueGame());
+document.getElementById('btn-resume').addEventListener('click', () => game.togglePause());
+
+// Continue button only enabled when a save exists.
+if (!game.save.hasSave()) {
+  const b = document.getElementById('btn-continue');
+  b.disabled = true; b.style.opacity = '0.4';
+}
+
+// ?autostart=1 — used by the automated playtest.
+if (new URLSearchParams(location.search).get('autostart') === '1') {
+  game.startNew();
+}

@@ -1,33 +1,74 @@
-// SOLMAR · input.js — keyboard + mouse state, edge-triggered action keys.
+// SOLMAR input — keyboard + touch buttons + pointer camera orbit.
 export class Input {
-  constructor() {
-    this.keys = new Set();
-    this.pressed = new Set(); // edge-triggered, consumed each frame
-    this.mouseDown = false;
-    this.mouseClicked = false;
-    this.onKey = null; // (code) => void, for UI keys (M, P, Esc, R, E)
-    window.addEventListener('keydown', (e) => {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-      if (!this.keys.has(e.code)) this.pressed.add(e.code);
-      this.keys.add(e.code);
-      if (this.onKey) this.onKey(e.code);
-    });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('mousedown', (e) => {
-      if (e.button === 0) { this.mouseDown = true; this.mouseClicked = true; }
-    });
-    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouseDown = false; });
-    window.addEventListener('blur', () => { this.keys.clear(); this.mouseDown = false; });
+  constructor(game) {
+    this.game = game;
+    this.keys = {};
+    this.touch = { forward: false, back: false, left: false, right: false };
+    this.yawDelta = 0; this.pitchDelta = 0;
+    this._bindKeys();
+    this._bindTouch();
+    this._bindPointer();
   }
-  down(code) { return this.keys.has(code); }
-  wasPressed(code) { return this.pressed.has(code); }
-  axis(neg, pos) { return (this.down(pos) ? 1 : 0) - (this.down(neg) ? 1 : 0); }
-  // WASD + arrows: forward axis and turn axis
-  move() {
-    const f = (this.down('KeyW') || this.down('ArrowUp') ? 1 : 0) - (this.down('KeyS') || this.down('ArrowDown') ? 1 : 0);
-    const t = (this.down('KeyA') || this.down('ArrowLeft') ? 1 : 0) - (this.down('KeyD') || this.down('ArrowRight') ? 1 : 0);
-    return { f, t };
+  _bindKeys() {
+    addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      this.keys[e.code] = true;
+      const g = this.game;
+      if (e.code === 'KeyE') g.tryEnterCar();
+      if (e.code === 'KeyF') g.combat.shoot();
+      if (e.code === 'KeyM') g.hud.toggleMap();
+      if (e.code === 'Escape' || e.code === 'KeyP') g.togglePause();
+      if (e.code === 'Space') { g.jump(); e.preventDefault(); }
+    });
+    addEventListener('keyup', (e) => { this.keys[e.code] = false; });
   }
-  endFrame() { this.pressed.clear(); this.mouseClicked = false; }
+  _bindTouch() {
+    const bind = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const on = (e) => { e.preventDefault(); this.touch[key] = true; };
+      const off = (e) => { e.preventDefault(); this.touch[key] = false; };
+      el.addEventListener('touchstart', on, { passive: false });
+      el.addEventListener('touchend', off, { passive: false });
+      el.addEventListener('mousedown', on);
+      el.addEventListener('mouseup', off);
+    };
+    bind('t-up', 'forward'); bind('t-down', 'back');
+    bind('t-left', 'left'); bind('t-right', 'right');
+    const act = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
+      el.addEventListener('click', fn);
+    };
+    act('t-act', () => this.game.tryEnterCar());
+    act('t-fire', () => this.game.combat.shoot());
+  }
+  _bindPointer() {
+    const cv = document.getElementById('game-canvas');
+    let dragging = false, lx = 0, ly = 0;
+    cv.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
+    addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      this.yawDelta += (e.clientX - lx) * 0.005;
+      this.pitchDelta += (e.clientY - ly) * 0.004;
+      lx = e.clientX; ly = e.clientY;
+    });
+    addEventListener('pointerup', () => { dragging = false; });
+  }
+  get state() {
+    const k = this.keys, t = this.touch;
+    return {
+      forward: !!(k.KeyW || k.ArrowUp || t.forward),
+      back: !!(k.KeyS || k.ArrowDown || t.back),
+      left: !!(k.KeyA || k.ArrowLeft || t.left),
+      right: !!(k.KeyD || k.ArrowRight || t.right),
+      sprint: !!(k.ShiftLeft || k.ShiftRight),
+    };
+  }
+  consumeCamera() {
+    const d = { yaw: this.yawDelta, pitch: this.pitchDelta };
+    this.yawDelta = 0; this.pitchDelta = 0;
+    return d;
+  }
 }

@@ -1,95 +1,61 @@
-// SOLMAR — Streets of the Sun · config.js
-// Single source of truth for world layout, spawn points and mission data.
-// Forward vector for heading h is (sin h, cos h) in (x, z); h = PI faces north (-z).
-
-export const CFG = {
-  world: { minX: -240, minZ: -240, maxX: 240, maxZ: 240 },
-  seaX: 208,               // water starts east of this x
-  marina: { x0: 168, z0: -132, x1: 212, z1: -68 }, // marina basin (water)
-  docks: { x0: 150, z0: 128, x1: 206, z1: 190 },   // quay rectangle
-  plaza: { x: 0, z: 0, half: 22 },
-  fountain: { x: 0, z: 0, r: 6 },
-  playerStart: { x: -6, z: 14, heading: Math.PI },
-  garage: { x: 0, z: -70 },          // Mara's garage (delivery point, on road x=0)
-  garageBldg: { x: 13, z: -70 },
-  marinaPoint: { x: 185, z: -100 },
-  neonSport: { x: 186, z: -92, heading: Math.PI / 2 },
-  docksPoint: { x: 178, z: 150 },
-  cashCrates: { x: 186, z: 158 },
-  palmAvenueX: 100,
-  startMoney: 150,
-  saveKey: 'solmar-save-v1',
-  startHour: 17.82, // 05:49 PM sunset
+// SOLMAR config — world layout, districts, cars, missions, dialogue.
+// Original city, original names. Nothing from any other game.
+export const WORLD = {
+  half: 240, seaX: 208, plaza: { x: 0, z: 0 },
+  roads: [-150, -100, -50, 0, 50, 100, 150],
+  roadHalf: 5, blockGap: 50,
 };
-
-// Real street network — used by city.js to lay roads AND by hud.js to draw the minimap.
-export const ROADS_V = [-150, -100, -50, 0, 50, 100, 150]; // north-south roads (x), z -170..170
-export const ROADS_H = [-150, -100, -50, 0, 50, 100, 150]; // east-west roads (z), x -170..170
-export const ROAD_W = 10;
-export const SPURS = [
-  { kind: 'v', x: 185, z0: -150, z1: -50, w: 8 },   // marina road
-  { kind: 'h', z: 150, x0: 150, x1: 208, w: 10 },  // docks road
-  { kind: 'v', x: 170, z0: 100, z1: 150, w: 8 },   // docks connector
+export const DISTRICTS = [
+  { name: 'Old Town', cx: -120, cz: -100, r: 90, kind: 'residential', palette: [0xd8c9a3, 0xc9b18a, 0xe0d3b0] },
+  { name: 'Palm Avenue', cx: 0, cz: 60, r: 80, kind: 'commercial', palette: [0x9fb4c7, 0xb7c9d8, 0x8fa8bd] },
+  { name: 'Marina', cx: 170, cz: 90, r: 60, kind: 'commercial', palette: [0x7fb3c8, 0x9cc8d8, 0x6ba3b8] },
+  { name: 'Harbour', cx: 170, cz: -110, r: 70, kind: 'industrial', palette: [0x8a8a86, 0x9a938a, 0x7a7a72] },
+  { name: 'Hillside', cx: -140, cz: 130, r: 80, kind: 'residential', palette: [0xe8dcc0, 0xd8c9a3, 0xcbb894] },
 ];
-
-// Parked cars: [x, z, heading, model]
-export const PARKED = [
-  [5.5, 40, 0, 'sedan'], [ -5.5, 62, Math.PI, 'hatch'], [55.5, -30, 0, 'taxi'],
-  [105.5, 80, 0, 'pickup'], [-45.5, -80, Math.PI, 'van'], [155.5, 20, 0, 'sedan'],
-  [-105.5, 110, Math.PI, 'hatch'], [5.5, -120, 0, 'sedan'], [45.5, 140, 0, 'taxi'],
-  [-155.5, -40, Math.PI, 'pickup'],
-];
-
 export const CAR_MODELS = {
-  sedan:  { color: 0xc23b2e, top: 22, accel: 14, grip: 1.0, name: 'Solmar Sedan' },
-  hatch:  { color: 0x3e7cc2, top: 20, accel: 13, grip: 1.0, name: 'Breeze Hatch' },
-  taxi:   { color: 0xf2b705, top: 21, accel: 13, grip: 1.0, name: 'Sun Cab' },
-  pickup: { color: 0x5a7d4f, top: 19, accel: 12, grip: 0.95, name: 'Dune Pickup' },
-  van:    { color: 0xd8d3c8, top: 17, accel: 11, grip: 0.9, name: 'Harbor Van' },
-  sport:  { color: 0xffc400, top: 30, accel: 19, grip: 1.15, name: 'Neon Sport' },
-  cruiser:{ color: 0x1c2733, top: 26, accel: 17, grip: 1.1, name: 'SPD Cruiser' },
+  sedan:   { name: 'Solmar Sedan',   color: 0x3a6ea5, top: 0x2a4a6a, len: 4.4, wid: 1.9, accel: 11, topSpeed: 34, grip: 2.6, price: 1200 },
+  hatch:   { name: 'Civic Hatch',    color: 0xc0392b, top: 0x7a1f16, len: 3.8, wid: 1.8, accel: 12, topSpeed: 32, grip: 2.9, price: 900 },
+  taxi:    { name: 'Sun Taxi',       color: 0xf1c40f, top: 0x111111, len: 4.4, wid: 1.9, accel: 11, topSpeed: 33, grip: 2.6, price: 1100 },
+  pickup:  { name: 'Dune Pickup',    color: 0x7d6608, top: 0x4a3d05, len: 4.8, wid: 2.0, accel: 10, topSpeed: 31, grip: 2.4, price: 1500 },
+  van:     { name: 'Cargo Van',      color: 0x7f8c8d, top: 0x5d6d7e, len: 5.0, wid: 2.1, accel: 8,  topSpeed: 28, grip: 2.2, price: 1400 },
+  sport:   { name: 'Neon Sport',     color: 0x00e5ff, top: 0x0a2a33, len: 4.2, wid: 2.0, accel: 16, topSpeed: 46, grip: 3.4, price: 8000 },
+  cruiser: { name: 'Police Cruiser', color: 0x1a1a2e, top: 0x0f0f1a, len: 4.6, wid: 2.0, accel: 13, topSpeed: 38, grip: 3.0, price: 0 },
 };
-
-export const MISSIONS = [
-  {
-    id: 0, chapter: 'CHAPTER 1 — WHEELS FOR MARA', title: 'Steal a car for Mara',
-    stages: [
-      { text: 'Steal any car — press E near one', sub: 'Parked cars line Palm Avenue' },
-      { text: 'Deliver the car to Mara\u2019s garage', sub: 'Follow the gold blip on the minimap' },
-    ],
-    reward: 500,
-  },
-  {
-    id: 1, chapter: 'CHAPTER 2 — NEON HEAT', title: 'Grab the Neon Sport',
-    stages: [
-      { text: 'Take the Neon Sport at the marina', sub: 'It is parked by the water, x185' },
-      { text: 'Lose the police — break line of sight', sub: 'Stay unseen until the heat dies' },
-    ],
-    reward: 0,
-  },
-  {
-    id: 2, chapter: 'CHAPTER 3 — HARBOUR HEIST', title: 'Raid the Vane cash crates',
-    stages: [
-      { text: 'Grab the cash at the docks — guards are armed', sub: 'Click to shoot. Crates by the water.' },
-      { text: 'Get clear of the docks', sub: 'The cash is yours. Drive!' },
-    ],
-    reward: 3500,
-  },
+export const PARKED_CARS = [
+  { model: 'sedan', x: -50, z: 10, angle: 0 },   // M1 target car, on road x=-50 facing south
+  { model: 'hatch', x: -60, z: -44, angle: 0 },
+  { model: 'taxi', x: 8, z: -52, angle: Math.PI },
+  { model: 'pickup', x: 108, z: 44, angle: Math.PI / 2 },
+  { model: 'van', x: -108, z: 108, angle: 0 },
+  { model: 'sedan', x: 56, z: 104, angle: Math.PI },
+  { model: 'hatch', x: -156, z: -8, angle: Math.PI / 2 },
+  { model: 'sport', x: 180, z: 60, angle: -Math.PI / 2 },  // M2 Neon Sport, marina
+  { model: 'sedan', x: 148, z: -148, angle: 0 },
+  { model: 'taxi', x: -48, z: 148, angle: Math.PI },
 ];
-
+export const MISSIONS = [
+  { id: 0, name: 'A Car for Mara', blip: { x: -50, z: 60 },
+    text: 'M1: Steal a car and deliver it to Mara\'s garage (yellow marker).',
+    done: 'Delivered. Mara: "Clean work, Dario. The Vanes won\'t know what hit them."' },
+  { id: 1, name: 'Neon Nights', blip: { x: 180, z: 60 },
+    text: 'M2: Grab the Neon Sport at the marina — then LOSE THE POLICE.',
+    done: 'You lost them. Kito: "That Neon Sport sings. The Vanes want it back — keep it moving."' },
+  { id: 2, name: 'Harbour Heist', blip: { x: 190, z: -80 },
+    text: 'M3: Hit the harbour crates. Four Vane guards. Take the cash (+$3,500).',
+    done: 'Heist done. +$3,500. Mara: "We\'re out, Dario. Solmar is ours tonight."' },
+];
 export const DIALOGUES = {
-  start: { who: 'Mara', text: 'Mara: Dario! I need wheels — steal a car and bring it to my garage.' },
-  neon: { who: 'Kito', text: 'Kito: That Neon Sport is hot — lose the cops!' },
-  harbor: { who: 'Kito', text: 'Kito: The cash is in the crates by the water — grab it fast, the guards are armed!' },
-  delivered: { who: 'Mara', text: 'Mara: Perfect. You always come through, brother.' },
-  evaded: { who: 'Kito', text: 'Kito: Clean. Nobody saw a thing.' },
-  heistDone: { who: 'Dario', text: 'Dario: The Vanes just funded our whole summer.' },
-  busted: { who: 'Kito', text: 'Kito: They booked you and let you walk. Lay low, Dario.' },
+  intro: { who: 'MARA', text: 'Dario — the Vanes took our garage. Steal a car, any car, and bring it to my marker. We start tonight.' },
+  m1done: { who: 'MARA', text: 'Clean work. Now the Neon Sport at the marina — Kito says the Vanes park it there at dusk.' },
+  m2start: { who: 'KITO', text: 'That Neon Sport is Vane property. Take it and the whole harbour precinct will be on you. Lose them!' },
+  m2done: { who: 'KITO', text: 'You shook every cruiser in Solmar. Beautiful. One last job: the harbour crates.' },
+  m3start: { who: 'KITO', text: 'Four armed guards on the crates. Stay low, use the pistol, grab the cash.' },
+  m3done: { who: 'MARA', text: 'We did it, Dario. $3,500 — the garage is ours again.' },
+  busted: { who: 'SOLMAR PD', text: 'You\'re busted, Voss. The Vanes own the courts, but tonight the cells own you. -$200 bail.' },
+  trial: { who: 'KITO', text: 'Sunset Sprint! Hit all 5 rings before the clock dies. $300 if you\'re fast enough.' },
 };
-
-export const PEOPLE = {
-  dario: { shirt: 0xffffff, pants: 0x23283a, skin: 0xd9a066, hair: 0x1a1210 },
-  mara: { shirt: 0xe85d75, pants: 0x2b3a55, skin: 0xe8b98a, hair: 0x3a1f16 },
-  kito: { shirt: 0x2fa36b, pants: 0x333333, skin: 0x8a5a3b, hair: 0x0d0d0d },
-  guard: { shirt: 0x7a1f1f, pants: 0x1c1c1c, skin: 0xc98d5f, hair: 0x111111 },
-};
+export const PEOPLE_NAMES = ['Ana', 'Beto', 'Celia', 'Dante', 'Elsa', 'Finn', 'Greta', 'Hugo', 'Ines', 'Jules', 'Kira', 'Leo', 'Mina', 'Nico', 'Olga', 'Paco', 'Rosa', 'Sven', 'Tara', 'Umar', 'Vera', 'Wes', 'Yara', 'Zeke'];
+export const TRAFFIC_COUNT = 16;
+export const PED_COUNT = 26;
+export const START_MONEY = 150;
+export const SAVE_KEY = 'solmar-save-v1';

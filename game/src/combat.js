@@ -1,54 +1,77 @@
-// SOLMAR · combat.js — pistol with tracer lines, ammo, guard damage.
+// SOLMAR combat — pistol with tracers, hit detection vs peds + guards.
 import * as THREE from 'three';
 
 export class Combat {
-  constructor(scene) {
-    this.scene = scene;
-    this.ammo = 12; this.maxAmmo = 12;
-    this.cooldown = 0;
+  constructor(scene, game) {
+    this.scene = scene; this.game = game;
     this.tracers = [];
-    this.reloadT = 0;
-    this.geo = new THREE.BufferGeometry();
+    this.cooldown = 0;
+    this.aimX = 0; this.aimZ = -10;
+  }
+  shoot() {
+    if (this.cooldown > 0 || !this.game.started) return false;
+    this.cooldown = 0.32;
+    const g = this.game;
+    const ox = g.px, oz = g.pz;
+    const dx = this.aimX - ox, dz = this.aimZ - oz;
+    const d = Math.hypot(dx, dz) || 1;
+    const dir = { x: dx / d, z: dz / d };
+    // tracer: bright line from muzzle toward aim point
+    const len = Math.min(d, 60);
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(ox, 1.3, oz),
+      new THREE.Vector3(ox + dir.x * len, 1.3, oz + dir.z * len),
+    ]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.95 }));
+    this.scene.add(line);
+    this.tracers.push({ line, t: 0 });
+    g.audio.shoot();
+    // hit the closest ped/guard within a cone of the shot
+    const targets = [
+      ...g.peds.list.filter((p) => p.alive).map((p) => ({ x: p.x, z: p.z, ref: p, kind: 'ped' })),
+      ...g.missions.guards.filter((gd) => gd.alive).map((gd) => ({ x: gd.x, z: gd.z, ref: gd, kind: 'guard' })),
+    ];
+    let best = null, bestD = 1e9;
+    for (const t of targets) {
+      const tx = t.x - ox, tz = t.z - oz;
+      const along = tx * dir.x + tz * dir.z;
+      if (along < 1 || along > 60) continue;
+      const perp = Math.abs(tx * dir.z - tz * dir.x);
+      if (perp < 1.6 && along < bestD) { bestD = along; best = t; }
+    }
+    if (best) {
+      best.ref.health -= 50;
+      if (best.ref.health <= 0) {
+        best.ref.alive = false;
+        best.ref.mesh.visible = false;
+        if (best.kind === 'guard') g.hud.flash('Guard down!');
+        if (best.kind === 'ped') g.setWanted(Math.min(5, g.wanted + 1));
+      }
+    }
+    return true;
+  }
+  guardShot(gd) {
+    const g = this.game;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(gd.x, 1.3, gd.z),
+      new THREE.Vector3(g.px, 1.3, g.pz),
+    ]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xff5544, transparent: true, opacity: 0.9 }));
+    this.scene.add(line);
+    this.tracers.push({ line, t: 0 });
+    g.audio.hit();
   }
   update(dt) {
     this.cooldown = Math.max(0, this.cooldown - dt);
-    if (this.reloadT > 0) {
-      this.reloadT -= dt;
-      if (this.reloadT <= 0) { this.ammo = this.maxAmmo; }
-    }
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const tr = this.tracers[i];
-      tr.life -= dt;
-      tr.line.material.opacity = Math.max(0, tr.life / 0.18);
-      if (tr.life <= 0) { this.scene.remove(tr.line); tr.line.geometry.dispose(); tr.line.material.dispose(); this.tracers.splice(i, 1); }
+      tr.t += dt;
+      tr.line.material.opacity = Math.max(0, 0.95 - tr.t * 5);
+      if (tr.t > 0.2) {
+        this.scene.remove(tr.line);
+        tr.line.geometry.dispose();
+        this.tracers.splice(i, 1);
+      }
     }
   }
-  // Fire from `from` along direction `dir`. Returns the first guard hit (or null).
-  shoot(from, dir, guards, audio) {
-    if (this.cooldown > 0 || this.reloadT > 0) return null;
-    if (this.ammo <= 0) { this.reloadT = 1.1; return null; }
-    this.ammo--; this.cooldown = 0.28;
-    const end = from.clone().addScaledVector(dir, 60);
-    let hitGuard = null, best = 60;
-    for (const g of guards) {
-      if (g.dead) continue;
-      // ray vs vertical capsule approximated as a sphere at chest height
-      const to = new THREE.Vector3(g.x - from.x, 1.1 - from.y, g.z - from.z);
-      const t = to.dot(dir);
-      if (t < 0 || t > 60) continue;
-      const closest = from.clone().addScaledVector(dir, t);
-      const d = Math.hypot(closest.x - g.x, closest.y - 1.1, closest.z - g.z);
-      if (d < 1.3 && t < best) { best = t; hitGuard = g; }
-    }
-    if (hitGuard) end.copy(from).addScaledVector(dir, best);
-    const g2 = new THREE.BufferGeometry().setFromPoints([from.clone(), end]);
-    const m = new THREE.LineBasicMaterial({ color: 0xffe9a3, transparent: true, opacity: 1 });
-    const line = new THREE.Line(g2, m);
-    this.scene.add(line);
-    this.tracers.push({ line, life: 0.18 });
-    if (audio) audio.gunshot();
-    if (hitGuard) { hitGuard.hp -= 1; if (hitGuard.hp <= 0) hitGuard.dead = true; }
-    return hitGuard;
-  }
-  reload() { if (this.ammo < this.maxAmmo && this.reloadT <= 0) this.reloadT = 1.1; }
 }

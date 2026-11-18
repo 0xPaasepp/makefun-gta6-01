@@ -1,35 +1,56 @@
-# 0xPaasepp/makefun-gta6-01
+# SOLMAR — Streets of the Sun
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+An original open-world crime game for the make.fun **gta6-01** competition
+("Make GTA 6"): a sunny coastal city, a wheelman taking back his sister's
+garage from the Vane family — steal a car, lose the cops in a Neon Sport,
+pull a harbour heist.
 
-SOLMAR — Streets of the Sun: an original open-world crime game for make.fun's “Make GTA 6” bounty, $1,666 in USDC. Built by an AI agent for make.fun's “Make GTA 6” bounty, $1,666 in USDC.
-
-## Run it
-
-```sh
-python3 -m http.server 8080 --directory game
-# open http://localhost:8080
-```
+[![gta6-01 competition](https://make.fun/competitions/gta6-01)](https://make.fun/competitions/gta6-01)
+[![gta6-01 leaderboard](https://make.fun/competitions/gta6-01/leaderboard)](https://make.fun/competitions/gta6-01/leaderboard)
+[![gta6-01 rewards](https://make.fun/competitions/gta6-01#rewards)](https://make.fun/competitions/gta6-01#rewards)
 
 ## Play
 
-You are Dario Voss, wheelman, back on the sunny streets of Solmar. Steal cars, outrun the Solmar PD, and run three story missions for your sister Mara and your fixer Kito: steal a car for the garage (+$500), grab the Neon Sport at the marina and lose the cops, then rob the Vane family's cash crates at the docks (+$3,500) while four armed guards shoot back.
+Open `game/index.html` in a desktop browser — fully static, zero network
+requests. Three.js is vendored under `game/vendor/`.
 
-- Open world on foot and by car: plaza + fountain, Palm Avenue, marina, docks and harbour, sea
-- 7 original car models, 16 traffic cars, 26 pedestrians — steal any car
-- Wanted 0–5: foot cops, cruisers that chase and ram, roadblocks, police helicopter
-- Pistol combat with tracers, health/armor, HUD with live minimap + full city map (M)
-- Day–sunset–night cycle, lit windows and street lamps, synthesized radio music (WebAudio)
-- Autosave every 30 s + on mission complete; Continue from the start screen
+- **WASD / arrows** — move & drive · **E** — enter / exit car · **F** — pistol
+- **SPACE** — jump · **M** — city map · **P / ESC** — pause · **SHIFT** — sprint
+- Drag the mouse to orbit the camera; touch buttons on mobile.
 
-Controls: W A S D move/drive, Shift sprint, E steal/enter/exit car, click shoot, R reload, M city map, P/Esc pause.
+## The game
 
-## Tech
+- **Solmar**: a procedural coastal city — plaza + fountain, Palm Avenue,
+  marina, docks with cranes, residential / commercial / industrial districts,
+  parks, parking bays, traffic lights, day–sunset–night cycle.
+- **Rendering**: ACES tone mapping, PMREM environment map, MeshPhysicalMaterial
+  clearcoat car paint, animated water, fog, PCF soft shadows, lit windows and
+  streetlights at night.
+- **Cars**: 7 original models with detailed bodywork — cabin, glass, wheels,
+  headlights, brake lights, mirrors, exhaust, interiors — plus suspension
+  visuals, weight transfer, gear-based engine sound and damage smoke.
+- **Systems**: wanted 0–5 (foot cops, cruisers that chase and ram, roadblocks,
+  police helicopter at wanted 4), 3 story missions, a Sunset Sprint time
+  trial, moving traffic, pedestrians, pistol combat, autosave + Continue.
+- **Audio**: everything synthesized in WebAudio — engine, tires, collisions,
+  gunshots, and SOL FM procedural radio. No audio files.
 
-Three.js vendored locally (`game/vendor/three.module.min.js`). Static files only — the game makes zero network requests. `main.ts` (Node stdlib only) copies `game/` + `screenshots/` to `/output` and writes `dossier.json`.
+## Missions
 
----
+1. **A Car for Mara** — steal a car, deliver it to the garage (+$500).
+2. **Neon Nights** — grab the Neon Sport at the marina and lose the police (+$800).
+3. **Harbour Heist** — four armed Vane guards, take the crates (+$3,500).
 
-<sub>Entered on [make.fun](https://make.fun/?ref=ddn7bre1&utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
+## Build
+
+```sh
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+```
+
+`main.ts` (Node 22, stdlib only) copies `game/` and `screenshots/` to the
+output dir and writes `dossier.json` via `vendor/makefun-game.ts`.
+
+## License
+
+MIT — see `LICENSE`. All characters, places, cars, and art are original;
+nothing is taken from any other game.

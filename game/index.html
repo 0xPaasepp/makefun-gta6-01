@@ -2,146 +2,128 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>SOLMAR — Streets of the Sun</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #14101c; font-family: Arial, Helvetica, sans-serif; color: #fff; }
-  #game-canvas { position: fixed; inset: 0; }
-  #game-canvas canvas { display: block; }
-  /* ---------- HUD ---------- */
-  #hud { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-  .panel { background: rgba(12, 10, 26, 0.78); border: 1px solid rgba(255, 217, 77, 0.25); border-radius: 10px; padding: 10px 14px; backdrop-filter: blur(2px); }
-  #mission-card { position: absolute; top: 12px; left: 12px; width: 340px; }
-  #mission-chapter { color: #ffd94d; font-size: 11px; letter-spacing: 2px; font-weight: bold; }
-  #mission-text { font-size: 17px; font-weight: bold; margin-top: 3px; }
-  #mission-sub { font-size: 12px; color: #cfc8de; margin-top: 2px; }
-  #mission-prog { display: flex; gap: 6px; margin-top: 8px; }
-  #mission-prog .seg { flex: 1; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
-  #mission-prog .seg .fill { display: block; height: 100%; background: #ffd94d; }
-  #pd-panel { position: absolute; top: 118px; left: 12px; width: 250px; font-size: 12px; }
-  .pd-title { color: #ff8d7e; font-size: 11px; letter-spacing: 2px; font-weight: bold; margin-bottom: 5px; }
-  .pd-row { display: flex; justify-content: space-between; padding: 2px 0; }
-  .tag { padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-  .tag-blue { background: #2f6fd0; } .tag-red { background: #d0342c; }
-  #top-right { position: absolute; top: 12px; right: 14px; text-align: right; }
-  #money { color: #7dff5e; font-size: 28px; font-weight: bold; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
-  #stars { font-size: 20px; letter-spacing: 3px; }
-  #clock { font-size: 13px; color: #e8e2f2; margin-top: 2px; }
-  #radio { font-size: 12px; color: #7fd4ff; margin-top: 2px; }
-  #vitals { position: absolute; left: 12px; bottom: 12px; width: 260px; font-size: 11px; letter-spacing: 1px; }
-  .bar-row { margin-top: 4px; }
-  .bar { height: 10px; background: rgba(255,255,255,0.18); border-radius: 5px; overflow: hidden; margin-top: 2px; }
-  .bar > div { height: 100%; }
-  #health-bar { background: linear-gradient(90deg, #37d67a, #7dff5e); width: 100%; }
-  #armor-bar { background: linear-gradient(90deg, #2f9be8, #7fd4ff); width: 50%; }
-  #weapon { margin-top: 8px; }
-  #weapon span { border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; padding: 3px 8px; margin-right: 6px; font-size: 11px; }
-  #dialogue { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: 620px; max-width: 62vw; display: none; align-items: flex-start; gap: 12px; }
-  #dlg-avatar { width: 52px; height: 52px; border-radius: 8px; background: #e85d75; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; flex: none; }
-  #dlg-name { color: #ff9db1; font-weight: bold; font-size: 13px; }
-  #dlg-text { font-size: 14px; line-height: 1.35; margin-top: 2px; }
-  #speed { position: absolute; right: 170px; bottom: 16px; text-align: right; display: none; }
-  #speed-num { font-size: 40px; font-weight: bold; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
-  #speed small { font-size: 12px; color: #e8e2f2; }
-  #condition { font-size: 11px; color: #ffd94d; }
-  #minimap { position: absolute; right: 12px; bottom: 12px; width: 150px; height: 150px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.8); background: #20242a; box-shadow: 0 4px 18px rgba(0,0,0,0.5); }
-  /* ---------- map overlay ---------- */
-  #map-overlay { position: fixed; inset: 0; background: rgba(8, 6, 18, 0.88); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 8; }
-  #map-overlay h2 { letter-spacing: 4px; color: #ffd94d; margin-bottom: 10px; }
-  #citymap { border: 2px solid rgba(255,255,255,0.35); border-radius: 8px; background: #20242a; }
-  #map-overlay p { margin-top: 10px; color: #cfc8de; font-size: 13px; }
-  /* ---------- pause ---------- */
-  #pause-overlay { position: fixed; inset: 0; background: rgba(8, 6, 18, 0.72); display: none; align-items: center; justify-content: center; z-index: 9; }
-  #pause-overlay h2 { font-size: 44px; letter-spacing: 8px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1626; font-family: 'Segoe UI', Arial, sans-serif; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   /* ---------- start screen ---------- */
-  #start-screen { position: fixed; inset: 0; z-index: 10; overflow-y: auto; background: linear-gradient(180deg, #ff9d6b 0%, #e87a9d 42%, #2b1055 100%); display: flex; align-items: center; justify-content: center; padding: 28px 12px; }
-  .start-inner { max-width: 780px; width: 100%; text-align: center; }
-  .logo { font-size: 88px; font-weight: 900; letter-spacing: 6px; line-height: 0.95;
-    background: linear-gradient(180deg, #fff6c8 10%, #ffd94d 45%, #ff6ec7 90%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    text-shadow: 0 0 42px rgba(255, 110, 199, 0.55); }
-  .tagline { font-size: 19px; letter-spacing: 5px; color: #ffe9f2; margin-top: 6px; }
-  .tagline2 { font-size: 13px; color: #ffd9e8; margin-top: 6px; line-height: 1.5; }
-  .cast { display: flex; gap: 14px; justify-content: center; margin: 22px 0; flex-wrap: wrap; }
-  .char { width: 200px; background: rgba(12, 10, 26, 0.72); border: 1px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 12px; }
-  .char svg { width: 110px; height: 110px; }
-  .char h3 { font-size: 16px; margin-top: 6px; }
-  .char p { font-size: 12px; color: #cfc8de; line-height: 1.45; margin-top: 4px; }
-  .btn { display: inline-block; pointer-events: auto; cursor: pointer; border: none; border-radius: 10px; padding: 14px 34px; font-size: 18px; font-weight: bold; letter-spacing: 1px; margin: 4px; }
-  #btn-new { background: linear-gradient(180deg, #ffd94d, #ff9d2e); color: #2b1055; }
-  #btn-continue { background: rgba(255,255,255,0.16); color: #fff; border: 2px solid rgba(255,255,255,0.55); }
-  .controls { margin-top: 20px; font-size: 12.5px; color: #f2e6ff; line-height: 1.8; background: rgba(12,10,26,0.5); border-radius: 10px; padding: 12px; }
-  .controls b { color: #ffd94d; }
-  .fine { margin-top: 14px; font-size: 11px; color: rgba(255,255,255,0.65); }
+  #start-screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, #ff9a3d 0%, #e85d3d 45%, #1a2a4a 100%); color: #fff; text-align: center; padding: 16px; overflow-y: auto; }
+  #start-screen h1 { font-size: min(72px, 11vw); letter-spacing: 0.12em; font-weight: 900; color: #fff;
+    text-shadow: 0 4px 0 #c0392b, 0 8px 24px rgba(0,0,0,.5); }
+  #start-screen h2 { font-size: min(20px, 4vw); letter-spacing: .35em; color: #ffe08a; margin: 4px 0 14px; }
+  #start-screen p.tag { max-width: 560px; font-size: 15px; line-height: 1.5; opacity: .95; margin-bottom: 16px; }
+  .cast { display: flex; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; justify-content: center; }
+  .cast figure { width: 120px; }
+  .cast svg { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #ffe08a; background: #123; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  .cast figcaption { margin-top: 6px; font-weight: 700; font-size: 14px; }
+  .cast figcaption span { display: block; font-weight: 400; font-size: 12px; opacity: .85; }
+  .menu button { display: block; width: 260px; margin: 8px auto; padding: 13px; font-size: 18px; font-weight: 800; letter-spacing: .06em;
+    color: #1a2a4a; background: #ffd23d; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 0 #b98a00; }
+  .menu button:hover { background: #ffe08a; }
+  .menu button.secondary { background: #fff; box-shadow: 0 4px 0 #999; }
+  .controls { font-size: 12.5px; opacity: .9; line-height: 1.7; max-width: 520px; margin-top: 12px; }
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; z-index: 10; display: none; pointer-events: none; color: #fff; }
+  #hud-top { position: absolute; top: 12px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .bars { width: 220px; }
+  .bar { height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.6); border-radius: 6px; margin-bottom: 5px; overflow: hidden; }
+  .bar > div { height: 100%; }
+  #hud-health { background: linear-gradient(90deg, #27ae60, #2ecc71); width: 100%; }
+  #hud-armor { background: linear-gradient(90deg, #2980b9, #3498db); width: 0%; }
+  #hud-money { font-size: 26px; font-weight: 900; color: #7dff8a; text-shadow: 0 2px 4px #000; text-align: right; }
+  #hud-stars { font-size: 24px; color: #ffd23d; text-shadow: 0 2px 4px #000; text-align: right; letter-spacing: 2px; }
+  #hud-clock { font-size: 15px; text-align: right; text-shadow: 0 1px 3px #000; opacity: .95; }
+  #hud-speed { position: absolute; right: 16px; bottom: 96px; font-size: 30px; font-weight: 900; text-shadow: 0 2px 6px #000; }
+  #hud-mission { position: absolute; left: 14px; bottom: 14px; max-width: 46%; background: rgba(0,0,0,.55); padding: 10px 12px;
+    border-left: 4px solid #f1c40f; border-radius: 4px; font-size: 14.5px; line-height: 1.45; }
+  #minimap { position: absolute; right: 14px; top: 96px; width: 150px; height: 150px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.75); box-shadow: 0 4px 14px rgba(0,0,0,.5); background: rgba(10,20,16,.6); }
+  #dialogue { position: absolute; left: 50%; transform: translateX(-50%); bottom: 110px; width: min(560px, 86%);
+    background: rgba(10,16,28,.88); border: 1px solid #f1c40f; border-radius: 8px; padding: 12px 16px; display: none; }
+  #dialogue-who { color: #f1c40f; font-weight: 800; letter-spacing: .08em; font-size: 13px; margin-bottom: 4px; }
+  #dialogue-text { font-size: 15px; line-height: 1.5; }
+  #hud-flash { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 26px; font-weight: 900;
+    color: #ffd23d; text-shadow: 0 2px 8px #000; display: none; }
+  /* ---------- overlays ---------- */
+  #map-overlay { position: fixed; inset: 0; z-index: 15; display: none; background: rgba(0,0,0,.72); text-align: center; padding-top: 24px; color: #fff; }
+  #citymap { border: 3px solid #f1c40f; border-radius: 8px; background: #0d2b3d; }
+  #pause-overlay { position: fixed; inset: 0; z-index: 18; display: none; align-items: center; justify-content: center;
+    flex-direction: column; background: rgba(0,0,0,.65); color: #fff; }
+  #pause-overlay h2 { font-size: 40px; letter-spacing: .2em; margin-bottom: 18px; }
+  #pause-overlay button { padding: 12px 34px; font-size: 18px; font-weight: 800; background: #ffd23d; border: none; border-radius: 8px; cursor: pointer; }
+  /* ---------- touch ---------- */
+  #touch-ui { position: fixed; inset: 0; z-index: 12; display: none; pointer-events: none; }
+  .tbtn { position: absolute; pointer-events: auto; width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255,255,255,.8);
+    background: rgba(0,0,0,.45); color: #fff; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none; }
+  #t-up { left: 76px; bottom: 128px; } #t-down { left: 76px; bottom: 52px; }
+  #t-left { left: 16px; bottom: 90px; } #t-right { left: 136px; bottom: 90px; }
+  #t-act { right: 22px; bottom: 128px; background: rgba(241,196,15,.55); }
+  #t-fire { right: 92px; bottom: 62px; background: rgba(192,57,43,.55); }
 </style>
 </head>
 <body>
-<div id="game-canvas"></div>
-
-<div id="hud">
-  <div id="mission-card" class="panel">
-    <div id="mission-chapter">CHAPTER 1 — WHEELS FOR MARA</div>
-    <div id="mission-text">Steal any car — press E near one</div>
-    <div id="mission-sub">Parked cars line Palm Avenue</div>
-    <div id="mission-prog"></div>
-  </div>
-  <div id="pd-panel" class="panel"></div>
-  <div id="top-right">
-    <div id="money">$150</div>
-    <div id="stars">☆☆☆☆☆</div>
-    <div id="clock">05:49 PM · SOLMAR</div>
-    <div id="radio">♪ SOL FM 98.1</div>
-  </div>
-  <div id="vitals" class="panel">
-    <div>HEALTH</div><div class="bar"><div id="health-bar"></div></div>
-    <div class="bar-row">ARMOR</div><div class="bar"><div id="armor-bar"></div></div>
-    <div id="weapon"><span>👊 FISTS</span><span id="weapon-pistol">🔫 PISTOL 12/12</span></div>
-  </div>
-  <div id="dialogue" class="panel">
-    <div id="dlg-avatar">M</div>
-    <div><div id="dlg-name">Mara</div><div id="dlg-text"></div></div>
-  </div>
-  <div id="speed"><div id="speed-num">0</div><small>km/h</small><div id="condition">CONDITION 100%</div></div>
-  <canvas id="minimap" width="150" height="150"></canvas>
-</div>
-
-<div id="map-overlay">
-  <h2>SOLMAR — CITY MAP</h2>
-  <canvas id="citymap" width="640" height="640"></canvas>
-  <p>Press <b>M</b> to close · Gold blip = mission target · Orange arrow = you</p>
-</div>
-
-<div id="pause-overlay"><h2>PAUSED</h2></div>
+<canvas id="game-canvas"></canvas>
 
 <div id="start-screen">
-  <div class="start-inner">
-    <div class="logo">SOLMAR</div>
-    <div class="tagline">STREETS OF THE SUN</div>
-    <div class="tagline2">An original open-world crime game. Steal cars, outrun the Solmar PD,<br>and take back what the Vane family stole from your family.</div>
-    <div class="cast">
-      <div class="char">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#3e7cc2"/><circle cx="50" cy="42" r="20" fill="#d9a066"/><path d="M30 42 Q30 18 50 18 Q70 18 70 42 Q60 30 50 30 Q40 30 30 42" fill="#1a1210"/><circle cx="43" cy="42" r="2.4" fill="#111"/><circle cx="57" cy="42" r="2.4" fill="#111"/><path d="M44 54 Q50 58 56 54" stroke="#7a4a22" stroke-width="2" fill="none"/><path d="M22 100 L32 74 Q50 68 68 74 L78 100 Z" fill="#ffffff"/><path d="M32 74 Q50 68 68 74 L66 82 Q50 77 34 82 Z" fill="#f0f0f0"/></svg>
-        <h3>DARIO VOSS</h3><p>The wheelman. Just out, back on the streets of Solmar — in his white tee.</p>
-      </div>
-      <div class="char">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#e85d75"/><circle cx="50" cy="42" r="20" fill="#e8b98a"/><path d="M28 46 Q26 16 50 16 Q74 16 72 46 Q66 28 50 28 Q34 28 28 46" fill="#3a1f16"/><circle cx="43" cy="42" r="2.4" fill="#111"/><circle cx="57" cy="42" r="2.4" fill="#111"/><path d="M44 52 Q50 57 56 52" stroke="#8a4a22" stroke-width="2" fill="none"/><path d="M22 100 L32 74 Q50 68 68 74 L78 100 Z" fill="#e85d75"/></svg>
-        <h3>MARA VOSS</h3><p>Dario's sister. Runs the garage — and the plan to hit the Vanes back.</p>
-      </div>
-      <div class="char">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#2fa36b"/><circle cx="50" cy="42" r="20" fill="#8a5a3b"/><path d="M30 40 Q32 20 50 20 Q68 20 70 40 Q60 30 50 30 Q40 30 30 40" fill="#0d0d0d"/><circle cx="43" cy="42" r="2.4" fill="#111"/><circle cx="57" cy="42" r="2.4" fill="#111"/><path d="M43 53 Q50 58 57 53" stroke="#5a2e18" stroke-width="2" fill="none"/><path d="M22 100 L32 74 Q50 68 68 74 L78 100 Z" fill="#2fa36b"/></svg>
-        <h3>KITO</h3><p>The fixer. Knows every fence, every shortcut, every cop's shift in Solmar.</p>
-      </div>
-    </div>
-    <button class="btn" id="btn-new">▶ NEW GAME</button>
-    <button class="btn" id="btn-continue" style="display:none">CONTINUE</button>
-    <div class="controls">
-      <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Shift</b> sprint &nbsp;·&nbsp; <b>E</b> steal / enter / exit car<br>
-      <b>Click</b> shoot pistol &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>M</b> city map &nbsp;·&nbsp; <b>P / Esc</b> pause<br>
-      Missions, wanted stars, police chases, autosave every 30 s. Steal the Neon Sport. Rob the docks.
-    </div>
-    <div class="fine">SOLMAR — Streets of the Sun · an original game. No Rockstar content. Three.js vendored locally · no network requests.</div>
+  <h1>SOLMAR</h1>
+  <h2>STREETS OF THE SUN</h2>
+  <p class="tag">An original open-world crime story. Dario Voss, wheelman, takes back his
+  sister's garage from the Vane family — one stolen car, one neon chase, one harbour heist at a time.</p>
+  <div class="cast">
+    <figure>
+      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a4a6a"/><circle cx="50" cy="38" r="18" fill="#e8b98a"/><path d="M32 30 Q50 12 68 30 L68 22 Q50 6 32 22Z" fill="#1a1a1a"/><rect x="34" y="36" width="8" height="3" fill="#1a1a1a"/><rect x="58" y="36" width="8" height="3" fill="#1a1a1a"/><path d="M42 52 Q50 56 58 52" stroke="#7a3b1e" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#ffffff"/><path d="M32 62 L28 78 L40 74Z" fill="#f0f0f0"/><path d="M68 62 L72 78 L60 74Z" fill="#f0f0f0"/></svg>
+      <figcaption>DARIO VOSS<span>Wheelman — the white t-shirt</span></figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#6a2a4a"/><circle cx="50" cy="38" r="18" fill="#f0c8a0"/><path d="M30 40 Q28 12 50 10 Q72 12 70 40 Q70 26 60 20 Q50 16 40 20 Q30 26 30 40Z" fill="#4a2c14"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M44 52 Q50 56 56 52" stroke="#a03040" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#c0392b"/><circle cx="50" cy="74" r="3" fill="#ffd23d"/></svg>
+      <figcaption>MARA<span>Dario's sister — the garage</span></figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a5a3a"/><circle cx="50" cy="38" r="18" fill="#c98d5f"/><path d="M32 34 Q50 16 68 34 L66 24 Q50 10 34 24Z" fill="#111111"/><rect x="32" y="26" width="36" height="5" fill="#222"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M40 52 Q50 58 60 52" stroke="#5a2a10" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#16a085"/><rect x="46" y="66" width="8" height="12" fill="#f1c40f"/></svg>
+      <figcaption>KITO<span>Friend — the lookout</span></figcaption>
+    </figure>
   </div>
+  <div class="menu">
+    <button id="btn-start">▶ NEW GAME</button>
+    <button id="btn-continue" class="secondary">CONTINUE</button>
+  </div>
+  <div class="controls">WASD / arrows — move &amp; drive &nbsp;·&nbsp; E — enter / exit car &nbsp;·&nbsp; F — pistol &nbsp;·&nbsp; SPACE — jump<br>
+  M — city map &nbsp;·&nbsp; P / ESC — pause &nbsp;·&nbsp; SHIFT — sprint &nbsp;·&nbsp; drag mouse — camera &nbsp;·&nbsp; touch buttons on mobile</div>
+</div>
+
+<div id="hud">
+  <div id="hud-top">
+    <div class="bars">
+      <div class="bar"><div id="hud-health"></div></div>
+      <div class="bar"><div id="hud-armor"></div></div>
+    </div>
+    <div>
+      <div id="hud-money">$150</div>
+      <div id="hud-stars">☆☆☆☆☆</div>
+      <div id="hud-clock">08:00</div>
+    </div>
+  </div>
+  <canvas id="minimap" width="150" height="150"></canvas>
+  <div id="hud-speed"></div>
+  <div id="hud-mission"></div>
+  <div id="dialogue"><div id="dialogue-who"></div><div id="dialogue-text"></div></div>
+  <div id="hud-flash"></div>
+</div>
+
+<div id="map-overlay"><h2 style="margin-bottom:10px;letter-spacing:.2em">SOLMAR — CITY MAP</h2>
+<canvas id="citymap" width="460" height="460"></canvas>
+<p style="margin-top:10px;opacity:.85">M — close &nbsp;·&nbsp; yellow dot: mission &nbsp;·&nbsp; white dot: you</p></div>
+
+<div id="pause-overlay"><h2>PAUSED</h2><button id="btn-resume">RESUME</button></div>
+
+<div id="touch-ui">
+  <div class="tbtn" id="t-up">▲</div><div class="tbtn" id="t-down">▼</div>
+  <div class="tbtn" id="t-left">◀</div><div class="tbtn" id="t-right">▶</div>
+  <div class="tbtn" id="t-act">E</div><div class="tbtn" id="t-fire">F</div>
 </div>
 
 <script type="importmap">
