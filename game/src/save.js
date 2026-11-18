@@ -1,30 +1,28 @@
-// SOLMAR — save. localStorage autosave (every 30s + on mission complete),
-// Continue restores money, mission, position, health and time of day.
+// SOLMAR · save.js — localStorage autosave (every 30 s + on mission complete).
+import { CFG } from './config.js';
 
-export const SAVE_KEY = 'solmar-save-v1';
-
-export function saveGameData(data) {
+export function writeSave(game) {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    const s = {
+      v: 1, money: game.money, mission: game.mission, stage: game.stage,
+      health: game.health, armor: game.armor, ammo: game.ammo,
+      px: game.px, pz: game.pz, heading: game.heading,
+      hour: game.hour, savedAt: Date.now(),
+    };
+    localStorage.setItem(CFG.saveKey, JSON.stringify(s));
     return true;
   } catch (e) { return false; }
 }
 
-export function loadGameData() {
+export function readSave() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(CFG.saveKey);
     if (!raw) return null;
-    const d = JSON.parse(raw);
-    if (typeof d !== 'object' || d === null) return null;
-    if (typeof d.money !== 'number' || typeof d.missionIndex !== 'number') return null;
-    return d;
+    const s = JSON.parse(raw);
+    if (!s || s.v !== 1 || typeof s.money !== 'number' || typeof s.mission !== 'number') return null;
+    return s;
   } catch (e) { return null; }
 }
 
-export function hasSave() {
-  try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
-}
-
-export function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
-}
+export function hasSave() { return readSave() !== null; }
+export function clearSave() { try { localStorage.removeItem(CFG.saveKey); } catch (e) {} }

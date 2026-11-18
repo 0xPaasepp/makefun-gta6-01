@@ -1,137 +1,80 @@
-// SOLMAR — missions. Three-chapter story thread: steal a car for Mara,
-// grab the Neon Sport and lose the cops, then the harbour heist for $3,500.
-// The manager owns the objective text, stage bars and payouts; the game
-// wires the world events (steal, deliver, grab, evade, cash) into it.
+// SOLMAR · missions.js — 3-mission story state machine.
+// complete() advances the mission state FIRST, then saves — so Continue
+// restores the NEW mission, never the one just finished.
+import { CFG, DIALOGUES, MISSIONS } from './config.js';
 
-import { CONFIG } from './config.js';
+export class Missions {
+  constructor(game) { this.game = game; }
+  get mission() { return this.game.mission; }
+  get stage() { return this.game.stage; }
 
-export class MissionManager {
-  constructor(game) {
-    this.game = game;
-    this.index = 0; // 0-based: 0 = M1
-    this.stage = 0;
-    this.evadeT = 0;
-    this.unseenT = 0;
-    this.done = false;
-    this.completed = [false, false, false];
-    this.objective = '';
-    this.chapter = '';
-    this.hint = '';
-    this.timerText = '';
-    this._refreshText();
+  objective() {
+    if (this.game.mission >= 3) return { chapter: 'SOLMAR — FREE ROAM', text: 'The city is yours. Drive, explore, cause trouble.', sub: 'Wanted decays when you stay out of sight.' };
+    const m = MISSIONS[this.game.mission];
+    const s = m.stages[Math.min(this.game.stage, m.stages.length - 1)];
+    return { chapter: m.chapter, text: s.text, sub: s.sub };
   }
-
-  get mission() { return CONFIG.missions[this.index]; }
-  get stageDef() { return this.mission ? this.mission.stages[this.stage] : null; }
-
-  _refreshText() {
-    const m = this.mission;
-    if (!m || this.done) {
-      this.chapter = 'SOLMAR — FREE ROAM';
-      this.objective = 'All missions complete. The city is yours, Dario.';
-      this.hint = 'Cruise, steal cars, dodge the law.';
-      this.timerText = '';
-      return;
-    }
-    this.chapter = m.chapter;
-    this.objective = this.stageDef.objective;
-    this.hint = this.stageDef.hint;
-    this.timerText = '';
-  }
-
-  /** Debug / scripted jump: setMission(i, stage) with i 0-based. */
-  setMission(i, stage = 0) {
-    this.index = Math.max(0, Math.min(2, i));
-    this.stage = Math.max(0, Math.min(1, stage));
-    this.evadeT = 0; this.unseenT = 0;
-    this._refreshText();
-  }
-
-  /** Objective target for the minimap / GPS: {x, z, label}. */
+  // Gold blip target for the minimap / map.
   target() {
-    if (!this.mission || this.done) return null;
-    const key = this.stageDef.key;
-    if (this.index === 0) {
-      return key === 'steal' ? { x: -37.5, z: 12, label: 'Steal a car' }
-        : { x: CONFIG.garage.x, z: CONFIG.garage.z, label: "Mara's garage" };
-    }
-    if (this.index === 1) {
-      return key === 'grab' ? { x: CONFIG.neonSport.x, z: CONFIG.neonSport.z, label: 'Neon Sport' }
-        : { x: -30, z: -150, label: 'Lose the cops' };
-    }
-    return key === 'heist' ? { x: CONFIG.cashCrates.x, z: CONFIG.cashCrates.z, label: 'Cash crates' }
-      : { x: -150, z: 150, label: 'Get clear' };
+    const g = this.game;
+    if (g.mission === 0) return g.stage === 0 ? null : { x: CFG.garage.x, z: CFG.garage.z };
+    if (g.mission === 1) return g.stage === 0 ? { x: CFG.neonSport.x, z: CFG.neonSport.z } : null;
+    if (g.mission === 2) return { x: CFG.cashCrates.x, z: CFG.cashCrates.z };
+    return null;
   }
-
   complete() {
-    const m = this.mission;
+    const g = this.game;
+    const m = MISSIONS[g.mission];
     if (!m) return;
-    this.game.addMoney(m.reward);
-    this.completed[this.index] = true;
-    this.game.hud.flashMoney(m.payoutText);
-    this.game.audio.playChime();
-    const lines = [CONFIG.dialogue.maraDone1, CONFIG.dialogue.kitoDone2, CONFIG.dialogue.kitoDone3];
-    this.game.hud.showDialogue(lines[this.index], 'Kito', 5);
-    this.game.saveGame();
-    this.index++;
-    this.stage = 0;
-    this.evadeT = 0; this.unseenT = 0;
-    if (this.index >= CONFIG.missions.length) this.done = true;
-    this._refreshText();
+    g.money += m.reward;
+    g.mission += 1; g.stage = 0; // advance FIRST
+    if (g.mission === 1) g.showDialogue(DIALOGUES.delivered, 4);
+    else if (g.mission === 2) g.showDialogue(DIALOGUES.evaded, 4);
+    else if (g.mission === 3) g.showDialogue(DIALOGUES.heistDone, 5);
+    if (g.audio) g.audio.chime();
+    g.saveNow(); // save AFTER advancing
+    if (g.mission === 2) g.spawnGuards();
   }
-
-  advanceStage() {
-    this.stage++;
-    if (this.stage >= this.mission.stages.length) this.complete();
-    else this._refreshText();
-  }
-
-  // ---- world events called by the game
-  onStealCar() {
-    if (this.index === 0 && this.stage === 0) this.advanceStage();
-  }
-  onDeliver() {
-    if (this.index === 0 && this.stage === 1) this.complete();
-  }
-  onGrabNeon() {
-    if (this.index === 1 && this.stage === 0) {
-      this.advanceStage();
-      this.game.setWanted(3);
-      this.game.hud.showDialogue(CONFIG.dialogue.kitoNeon, 'Kito', 5);
-      this.evadeT = 0;
+  // Called when the player enters a car.
+  onEnterCar(car) {
+    const g = this.game;
+    if (g.mission === 0 && g.stage === 0) {
+      g.stage = 1;
+      g.showDialogue({ who: 'Mara', text: 'Mara: That\u2019s the one — bring it to my garage at the north end of the plaza road.' }, 4);
+    }
+    if (g.mission === 1 && g.stage === 0 && car.isNeon) {
+      g.stage = 1;
+      g.setWanted(3);
+      g.showDialogue(DIALOGUES.neon, 4);
     }
   }
-  onCashGrabbed() {
-    if (this.index === 2 && this.stage === 0) this.advanceStage();
-  }
-  onEscapeClear() {
-    if (this.index === 2 && this.stage === 1) this.complete();
-  }
-
   update(dt) {
-    if (!this.mission || this.done) return;
-    // M2 evade: survive unseen. Wanted 0 = clean; 25s of breaking line of
-    // sight also counts (police far away counts as unseen).
-    if (this.index === 1 && this.stage === 1) {
-      const wanted = this.game.wanted;
-      const nearest = this.game.nearestPoliceDist();
-      if (wanted === 0) { this.complete(); return; }
-      if (nearest > 45) {
-        this.unseenT += dt;
-        this.evadeT += dt;
-        this.timerText = `UNSEEN ${Math.ceil(this.unseenT)}s / 25s`;
-        if (this.unseenT >= 25) { this.game.setWanted(0); this.complete(); return; }
-      } else {
-        this.unseenT = 0;
-        this.timerText = 'SHAKE THE TAIL — stay out of sight';
-      }
+    const g = this.game;
+    // M1: deliver the stolen car to the garage.
+    if (g.mission === 0 && g.stage === 1 && g.inCar) {
+      const d = Math.hypot(g.px - CFG.garage.x, g.pz - CFG.garage.z);
+      if (d < 7) this.complete();
     }
-    // M3 escape: once the cash is grabbed, get 60+ units from the docks
-    // with wanted 0, or simply survive 20s clear of the docks.
-    if (this.index === 2 && this.stage === 1) {
-      const d = Math.hypot(this.game.player.x - CONFIG.docks.x, this.game.player.z - CONFIG.docks.z);
-      if (d > 70 && this.game.wanted === 0) { this.complete(); return; }
-      this.timerText = d > 70 ? 'HEAT DYING — stay clear' : 'GET CLEAR OF THE DOCKS';
+    // M2 evade: progress while no police unit is close; wanted 0 also completes.
+    if (g.mission === 1 && g.stage === 1) {
+      if (g.wanted <= 0) { this.complete(); return; }
+      const near = g.police.nearestDist();
+      if (near === null || near > 45) {
+        g.evadeT += dt;
+        if (g.evadeT >= 12) this.complete();
+      } else g.evadeT = Math.max(0, g.evadeT - dt * 0.5);
+    }
+    // M3: stand by the cash crates to grab them, then get clear.
+    if (g.mission === 2 && g.stage === 0) {
+      const d = Math.hypot(g.px - CFG.cashCrates.x, g.pz - CFG.cashCrates.z);
+      if (d < 4.5) {
+        g.grabT += dt;
+        if (g.grabT >= 1.6) { g.stage = 1; g.showDialogue({ who: 'Dario', text: 'Dario: Got it — $3,500. Now get clear of the docks!' }, 4); }
+      } else g.grabT = 0;
+    }
+    if (g.mission === 2 && g.stage === 1) {
+      const d = Math.hypot(g.px - CFG.docksPoint.x, g.pz - CFG.docksPoint.z);
+      if (d > 55) this.complete();
     }
   }
 }

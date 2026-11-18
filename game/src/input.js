@@ -1,48 +1,33 @@
-// SOLMAR — input. Keyboard + mouse state. WASD/arrows drive and walk,
-// E enters/exits cars, Space handbrake, R reload, M map, P/Esc pause,
-// click fires the pistol.
-
+// SOLMAR · input.js — keyboard + mouse state, edge-triggered action keys.
 export class Input {
   constructor() {
-    this.keys = {};
+    this.keys = new Set();
+    this.pressed = new Set(); // edge-triggered, consumed each frame
     this.mouseDown = false;
-    this.mouseDX = 0;
-    this._listeners = [];
-    const kd = (e) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
-      this.keys[e.key.toLowerCase()] = true;
-      this._fire('keydown', e);
-    };
-    const ku = (e) => { this.keys[e.key.toLowerCase()] = false; };
-    const md = (e) => { this.mouseDown = true; this._fire('mousedown', e); };
-    const mu = () => { this.mouseDown = false; };
-    const mm = (e) => { this.mouseDX = e.movementX || 0; };
-    window.addEventListener('keydown', kd);
-    window.addEventListener('keyup', ku);
-    window.addEventListener('mousedown', md);
-    window.addEventListener('mouseup', mu);
-    window.addEventListener('mousemove', mm);
-    this._listeners.push(['keydown', kd], ['keyup', ku], ['mousedown', md], ['mouseup', mu], ['mousemove', mm]);
+    this.mouseClicked = false;
+    this.onKey = null; // (code) => void, for UI keys (M, P, Esc, R, E)
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      if (!this.keys.has(e.code)) this.pressed.add(e.code);
+      this.keys.add(e.code);
+      if (this.onKey) this.onKey(e.code);
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { this.mouseDown = true; this.mouseClicked = true; }
+    });
+    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouseDown = false; });
+    window.addEventListener('blur', () => { this.keys.clear(); this.mouseDown = false; });
   }
-
-  on(evt, fn) {
-    this._handlers = this._handlers || {};
-    (this._handlers[evt] = this._handlers[evt] || []).push(fn);
+  down(code) { return this.keys.has(code); }
+  wasPressed(code) { return this.pressed.has(code); }
+  axis(neg, pos) { return (this.down(pos) ? 1 : 0) - (this.down(neg) ? 1 : 0); }
+  // WASD + arrows: forward axis and turn axis
+  move() {
+    const f = (this.down('KeyW') || this.down('ArrowUp') ? 1 : 0) - (this.down('KeyS') || this.down('ArrowDown') ? 1 : 0);
+    const t = (this.down('KeyA') || this.down('ArrowLeft') ? 1 : 0) - (this.down('KeyD') || this.down('ArrowRight') ? 1 : 0);
+    return { f, t };
   }
-
-  _fire(evt, e) {
-    const hs = (this._handlers || {})[evt] || [];
-    for (const h of hs) h(e);
-  }
-
-  isDown(...names) { return names.some((n) => !!this.keys[n]); }
-  get up() { return this.isDown('w', 'arrowup'); }
-  get down() { return this.isDown('s', 'arrowdown'); }
-  get left() { return this.isDown('a', 'arrowleft'); }
-  get right() { return this.isDown('d', 'arrowright'); }
-  pressed(name) {
-    const k = name.toLowerCase();
-    if (this.keys[k]) { this.keys[k] = false; return true; }
-    return false;
-  }
+  endFrame() { this.pressed.clear(); this.mouseClicked = false; }
 }
