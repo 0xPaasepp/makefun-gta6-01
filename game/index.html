@@ -2,137 +2,207 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SOLMAR — Streets of the Sun</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1626; font-family: 'Segoe UI', Arial, sans-serif; }
-  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* ---------- start screen ---------- */
-  #start-screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, #ff9a3d 0%, #e85d3d 45%, #1a2a4a 100%); color: #fff; text-align: center; padding: 16px; overflow-y: auto; }
-  #start-screen h1 { font-size: min(72px, 11vw); letter-spacing: 0.12em; font-weight: 900; color: #fff;
-    text-shadow: 0 4px 0 #c0392b, 0 8px 24px rgba(0,0,0,.5); }
-  #start-screen h2 { font-size: min(20px, 4vw); letter-spacing: .35em; color: #ffe08a; margin: 4px 0 14px; }
-  #start-screen p.tag { max-width: 560px; font-size: 15px; line-height: 1.5; opacity: .95; margin-bottom: 16px; }
-  .cast { display: flex; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; justify-content: center; }
-  .cast figure { width: 120px; }
-  .cast svg { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #ffe08a; background: #123; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
-  .cast figcaption { margin-top: 6px; font-weight: 700; font-size: 14px; }
-  .cast figcaption span { display: block; font-weight: 400; font-size: 12px; opacity: .85; }
-  .menu button { display: block; width: 260px; margin: 8px auto; padding: 13px; font-size: 18px; font-weight: 800; letter-spacing: .06em;
-    color: #1a2a4a; background: #ffd23d; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 0 #b98a00; }
-  .menu button:hover { background: #ffe08a; }
-  .menu button.secondary { background: #fff; box-shadow: 0 4px 0 #999; }
-  .controls { font-size: 12.5px; opacity: .9; line-height: 1.7; max-width: 520px; margin-top: 12px; }
-  /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; z-index: 10; display: none; pointer-events: none; color: #fff; }
-  #hud-top { position: absolute; top: 12px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
-  .bars { width: 220px; }
-  .bar { height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.6); border-radius: 6px; margin-bottom: 5px; overflow: hidden; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e14; font-family: Arial, Helvetica, sans-serif; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Golden-hour vignette: darkens the frame edges so the sunset never
+     washes the street out — the glare treatment, in CSS. */
+  #vignette { position: fixed; inset: 0; z-index: 4; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(20,8,20,.38) 100%); }
+  .hud { position: fixed; z-index: 5; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); pointer-events: none; }
+  #hud-topleft { top: 14px; left: 14px; width: 240px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .bar-label { font-size: 11px; font-weight: bold; width: 46px; letter-spacing: 1px; }
+  .bar { flex: 1; height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.5); border-radius: 3px; overflow: hidden; }
   .bar > div { height: 100%; }
-  #hud-health { background: linear-gradient(90deg, #27ae60, #2ecc71); width: 100%; }
-  #hud-armor { background: linear-gradient(90deg, #2980b9, #3498db); width: 0%; }
-  #hud-money { font-size: 26px; font-weight: 900; color: #7dff8a; text-shadow: 0 2px 4px #000; text-align: right; }
-  #hud-stars { font-size: 24px; color: #ffd23d; text-shadow: 0 2px 4px #000; text-align: right; letter-spacing: 2px; }
-  #hud-clock { font-size: 15px; text-align: right; text-shadow: 0 1px 3px #000; opacity: .95; }
-  #hud-speed { position: absolute; right: 16px; top: 262px; font-size: 30px; font-weight: 900; text-shadow: 0 2px 6px #000; }
-  #hud-mission { position: absolute; left: 14px; bottom: 14px; max-width: 46%; background: rgba(0,0,0,.55); padding: 10px 12px;
-    border-left: 4px solid #f1c40f; border-radius: 4px; font-size: 14.5px; line-height: 1.45; }
-  #minimap { position: absolute; right: 14px; top: 96px; width: 150px; height: 150px; border-radius: 50%;
-    border: 3px solid rgba(255,255,255,.75); box-shadow: 0 4px 14px rgba(0,0,0,.5); background: rgba(10,20,16,.6); }
-  #dialogue { position: absolute; left: 50%; transform: translateX(-50%); bottom: 110px; width: min(560px, 86%);
-    background: rgba(10,16,28,.88); border: 1px solid #f1c40f; border-radius: 8px; padding: 12px 16px; display: none;
-    gap: 12px; align-items: flex-start; }
-  #dialogue-portrait { flex-shrink: 0; }
-  #dialogue-portrait svg { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #f1c40f; background: #123; display: block; }
-  #dialogue-body { min-width: 0; }
-  #dialogue-who { color: #f1c40f; font-weight: 800; letter-spacing: .08em; font-size: 13px; margin-bottom: 4px; }
-  #dialogue-text { font-size: 15px; line-height: 1.5; }
-  #hud-flash { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 26px; font-weight: 900;
-    color: #ffd23d; text-shadow: 0 2px 8px #000; display: none; }
-  /* ---------- overlays ---------- */
-  #map-overlay { position: fixed; inset: 0; z-index: 15; display: none; background: rgba(0,0,0,.72); text-align: center; padding-top: 24px; color: #fff; }
-  #citymap { border: 3px solid #f1c40f; border-radius: 8px; background: #0d2b3d; }
-  #pause-overlay { position: fixed; inset: 0; z-index: 18; display: none; align-items: center; justify-content: center;
-    flex-direction: column; background: rgba(0,0,0,.65); color: #fff; }
-  #pause-overlay h2 { font-size: 40px; letter-spacing: .2em; margin-bottom: 18px; }
-  #pause-overlay button { padding: 12px 34px; font-size: 18px; font-weight: 800; background: #ffd23d; border: none; border-radius: 8px; cursor: pointer; }
-  /* ---------- touch ---------- */
-  #touch-ui { position: fixed; inset: 0; z-index: 12; display: none; pointer-events: none; }
-  .tbtn { position: absolute; pointer-events: auto; width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255,255,255,.8);
-    background: rgba(0,0,0,.45); color: #fff; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center;
-    user-select: none; -webkit-user-select: none; }
-  #t-up { left: 76px; bottom: 128px; } #t-down { left: 76px; bottom: 52px; }
-  #t-left { left: 16px; bottom: 90px; } #t-right { left: 136px; bottom: 90px; }
-  #t-act { right: 22px; bottom: 128px; background: rgba(241,196,15,.55); }
-  #t-fire { right: 92px; bottom: 62px; background: rgba(192,57,43,.55); }
+  #hud-health { background: linear-gradient(90deg, #37d67a, #1f9d55); width: 100%; }
+  #hud-armor { background: linear-gradient(90deg, #4fb3e8, #2a6ea8); width: 0%; }
+  #hud-respect-bar { background: linear-gradient(90deg, #ffd23f, #ff5a8a); width: 0%; }
+  #hud-money { font-size: 26px; font-weight: bold; color: #7dff9a; margin-top: 2px; }
+  #hud-weapon { font-size: 13px; color: #ffd23f; margin-top: 2px; }
+  #hud-radio { font-size: 12px; color: #cfe8ff; margin-top: 2px; }
+  #hud-respect { font-size: 12px; color: #ffd23f; margin-top: 2px; letter-spacing: 1px; }
+  #hud-shells { font-size: 12px; color: #ffe9a8; margin-top: 2px; letter-spacing: 1px; }
+  #hud-topright { top: 14px; right: 14px; text-align: right; }
+  #hud-stars { font-size: 26px; letter-spacing: 3px; }
+  #hud-clock { font-size: 20px; font-weight: bold; margin-top: 2px; }
+  #hud-phase { font-size: 11px; letter-spacing: 3px; color: #ffb060; margin-top: 1px; }
+  #hud-zone { font-size: 12px; letter-spacing: 2px; color: #ffd23f; margin-top: 2px; }
+  #hud-street { font-size: 11px; letter-spacing: 1px; color: #cfe8ff; margin-top: 1px; }
+  #minimap-wrap { margin-top: 8px; width: 168px; height: 168px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(255,255,255,.85); box-shadow: 0 0 0 2px rgba(0,0,0,.5); margin-left: auto; background: #20262e; }
+  #minimap { width: 168px; height: 168px; display: block; }
+  #dispatch { display: none; margin-top: 8px; margin-left: auto; width: 240px; text-align: left; background: rgba(8,12,20,.82); border: 1px solid rgba(255,90,60,.7); border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+  #dispatch-status { font-weight: bold; letter-spacing: 1px; color: #ff8a6a; margin-bottom: 4px; }
+  .dispatch-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; border-top: 1px solid rgba(255,255,255,.12); }
+  .dispatch-name { font-weight: bold; }
+  .dispatch-dist { color: #cfe8ff; }
+  .dispatch-state { color: #ffd23f; font-weight: bold; }
+  .dispatch-state.hot { color: #ff5a3c; }
+  #objective { left: 14px; bottom: 14px; max-width: 460px; font-size: 15px; font-weight: bold; background: rgba(0,0,0,.55); padding: 9px 12px; border-left: 4px solid #ffd23f; border-radius: 3px; line-height: 1.35; }
+  #hud-speed { right: 96px; bottom: 26px; font-size: 30px; font-weight: bold; text-align: right; }
+  #hud-speed small { font-size: 13px; display: block; color: #ffd23f; letter-spacing: 2px; }
+  #crosshair { left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 2px solid rgba(255,255,255,.85); border-radius: 50%; }
+  #dialogue { left: 50%; bottom: 108px; transform: translateX(-50%); width: 620px; max-width: 92vw; display: none; align-items: flex-start; gap: 12px; background: rgba(8,12,20,.88); border: 1px solid rgba(255,210,63,.7); border-radius: 8px; padding: 12px 14px; pointer-events: none; }
+  #dialogue-portrait { flex: 0 0 52px; }
+  #dialogue-name { color: #ffd23f; font-weight: bold; letter-spacing: 2px; font-size: 13px; margin-bottom: 4px; }
+  #dialogue-text { font-size: 15px; line-height: 1.45; }
+  #toast { left: 50%; top: 84px; transform: translateX(-50%); display: none; background: rgba(0,0,0,.7); border: 1px solid #ffd23f; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+  #weapon-wheel { left: 50%; top: 42%; transform: translate(-50%, -50%); display: none; gap: 10px; }
+  .wheel-slot { background: rgba(8,12,20,.85); border: 2px solid rgba(255,255,255,.4); border-radius: 8px; padding: 10px 14px; font-size: 14px; font-weight: bold; text-align: center; min-width: 96px; }
+  .wheel-slot.current { border-color: #ffd23f; color: #ffd23f; box-shadow: 0 0 14px rgba(255,210,63,.6); }
+  .wheel-slot.locked { opacity: .45; }
+  .wheel-key { display: block; font-size: 11px; color: #cfe8ff; margin-bottom: 3px; }
+  #hud-paint { left: 50%; bottom: 190px; transform: translateX(-50%); display: none; background: rgba(8,12,20,.88); border: 1px solid #ffd23f; border-radius: 6px; padding: 8px 14px; font-size: 14px; }
+  .touch-btn { position: fixed; z-index: 6; width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.8); background: rgba(0,0,0,.45); color: #fff; font-size: 20px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  #t-fire { right: 16px; bottom: 16px; }
+  #t-enter { right: 88px; bottom: 96px; width: 52px; height: 52px; font-size: 15px; }
+  .overlay { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: linear-gradient(180deg, rgba(40,16,60,.82) 0%, rgba(120,40,60,.78) 55%, rgba(20,10,20,.9) 100%); }
+  /* Rebuild 13: the title screen is translucent — the attract-mode city
+     orbits behind it, so the game is the backdrop, not a flat gradient. */
+  #title-screen { background: linear-gradient(180deg, rgba(40,16,60,.55) 0%, rgba(120,40,60,.5) 55%, rgba(20,10,20,.72) 100%); }
+  .logo { font-size: 84px; font-weight: 900; letter-spacing: 6px; color: #ffd23f; text-shadow: 0 4px 0 #c23b3b, 0 10px 28px rgba(0,0,0,.8); line-height: 1; }
+  .tagline { font-size: 22px; letter-spacing: 8px; color: #fff; margin: 10px 0 4px; text-shadow: 0 2px 8px rgba(0,0,0,.9); }
+  .subtitle { font-size: 15px; color: #ffe9c8; margin-bottom: 22px; }
+  .cast { display: flex; gap: 26px; margin-bottom: 26px; }
+  .cast figure { font-size: 13px; letter-spacing: 1px; }
+  .cast figcaption { margin-top: 6px; font-weight: bold; }
+  .cast small { color: #cfe8ff; display: block; font-weight: normal; }
+  .menu-btn { pointer-events: auto; cursor: pointer; font-size: 19px; font-weight: bold; letter-spacing: 2px; color: #111; background: #ffd23f; border: none; border-radius: 6px; padding: 13px 34px; margin: 6px; box-shadow: 0 4px 0 #b89a1e; }
+  .menu-btn:hover { background: #ffe14d; }
+  .menu-btn.ghost { background: transparent; color: #fff; border: 2px solid #fff; box-shadow: none; }
+  .controls { margin-top: 20px; font-size: 13px; line-height: 1.7; color: #dfeaff; background: rgba(0,0,0,.4); padding: 12px 20px; border-radius: 8px; }
+  .foot { margin-top: 16px; font-size: 11px; color: rgba(255,255,255,.6); }
+  #pause-screen { display: none; background: rgba(5,8,14,.82); }
+  #pause-screen h1 { font-size: 54px; letter-spacing: 8px; margin-bottom: 18px; }
+  /* Rebuild 13: full-city map screen — left stats panel, big map canvas,
+     legend, and SAVE / LOAD / RESUME / QUIT buttons. */
+  #map-screen { display: none; flex-direction: row; align-items: stretch; justify-content: center; gap: 18px; padding: 28px; background: rgba(5,8,14,.86); text-align: left; overflow: auto; }
+  #map-left { width: 230px; flex: 0 0 230px; display: flex; flex-direction: column; gap: 10px; }
+  #map-left h2 { font-size: 26px; letter-spacing: 4px; color: #ffd23f; }
+  #map-left h3 { font-size: 13px; letter-spacing: 2px; color: #cfe8ff; margin-top: 4px; }
+  #map-stats { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+  .map-stat { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 5px; padding: 7px 10px; }
+  .map-stat span { color: #cfe8ff; letter-spacing: 1px; font-size: 12px; }
+  .map-stat b { color: #ffd23f; }
+  #map-left .menu-btn { margin: 3px 0; padding: 10px 18px; font-size: 15px; width: 100%; }
+  #map-right { flex: 1 1 auto; min-width: 0; max-width: 760px; display: flex; flex-direction: column; gap: 10px; }
+  #map-canvas { width: 100%; height: auto; border: 3px solid rgba(255,255,255,.85); border-radius: 8px; background: #20262e; }
+  #map-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: #dfeaff; }
+  #map-legend b { font-weight: bold; }
+  .lg-gold { color: #ffd23f; } .lg-green { color: #2aff8a; } .lg-red { color: #ff5a3c; }
+  .lg-blue { color: #4fb3e8; } .lg-white { color: #fff; } .lg-pink { color: #ff5a8a; }
+  /* Rebuild 13: explicit BUSTED / WASTED screen — big, unmissable, with
+     the cost of the bust/waste underneath. No silent respawn. */
+  #busted-screen { display: none; z-index: 30; background: rgba(10,0,0,.72); }
+  #busted-title { font-size: 110px; font-weight: 900; letter-spacing: 14px; color: #ff3b30; text-shadow: 0 6px 0 #5a0a0a, 0 12px 32px rgba(0,0,0,.9); }
+  #busted-sub { font-size: 18px; color: #ffe9c8; margin-top: 8px; }
+  #dialogue-phone { display: none; font-size: 11px; letter-spacing: 2px; color: #2aff8a; margin-left: 8px; }
 </style>
 </head>
 <body>
 <canvas id="game-canvas"></canvas>
+<div id="vignette"></div>
 
-<div id="start-screen">
-  <h1>SOLMAR</h1>
-  <h2>STREETS OF THE SUN</h2>
-  <p class="tag">An original open-world crime story. Dario Voss, wheelman, takes back his
-  sister's garage from the Vane family — one stolen car, one neon chase, one harbour heist at a time.</p>
+<div id="hud-topleft" class="hud">
+  <div class="bar-row"><span class="bar-label">HEALTH</span><div class="bar"><div id="hud-health"></div></div></div>
+  <div class="bar-row"><span class="bar-label">ARMOR</span><div class="bar"><div id="hud-armor"></div></div></div>
+  <div class="bar-row"><span class="bar-label">RESPECT</span><div class="bar"><div id="hud-respect-bar"></div></div></div>
+  <div id="hud-money">$150</div>
+  <div id="hud-respect">RESPECT NOBODY · 0</div>
+  <div id="hud-shells">☀ SHELLS 0/10</div>
+  <div id="hud-weapon">Pistol</div>
+  <div id="hud-radio">♪ OLA 104.5 — DJ Marea</div>
+</div>
+
+<div id="hud-topright" class="hud">
+  <div id="hud-stars">☆☆☆☆☆</div>
+  <div id="hud-clock">17:40</div>
+  <div id="hud-phase">GOLDEN HOUR</div>
+  <div id="hud-zone">SOLMAR PLAZA</div>
+  <div id="hud-street">Palm Ave</div>
+  <div id="minimap-wrap"><canvas id="minimap" width="168" height="168"></canvas></div>
+  <div id="dispatch"><div id="dispatch-status">SOLMAR PD — SEARCHING</div><div id="dispatch-units"></div></div>
+</div>
+
+<div id="objective" class="hud">Mission 1 — A Car for Mara: steal a car and bring it to Mara's garage.</div>
+<div id="hud-speed" class="hud">0 km/h<small>SPEED</small></div>
+<div id="crosshair" class="hud"></div>
+<div id="weapon-wheel" class="hud"></div>
+<div id="hud-paint" class="hud"></div>
+
+<div id="dialogue" class="hud">
+  <div id="dialogue-portrait"></div>
+  <div><div id="dialogue-name"><span id="dialogue-name-text">MARA</span><span id="dialogue-phone"></span></div><div id="dialogue-text"></div></div>
+</div>
+<div id="toast" class="hud"></div>
+
+<button id="t-fire" class="touch-btn" title="Fire (F)">F</button>
+<button id="t-enter" class="touch-btn" title="Enter / exit car (E)">E</button>
+
+<div id="title-screen" class="overlay">
+  <div class="logo">SOLMAR</div>
+  <div class="tagline">STREETS OF THE SUN</div>
+  <div class="subtitle">An original open-world crime story at golden hour — drive, steal, outrun the law.</div>
   <div class="cast">
-    <figure>
-      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a4a6a"/><circle cx="50" cy="38" r="18" fill="#e8b98a"/><path d="M32 30 Q50 12 68 30 L68 22 Q50 6 32 22Z" fill="#1a1a1a"/><rect x="34" y="36" width="8" height="3" fill="#1a1a1a"/><rect x="58" y="36" width="8" height="3" fill="#1a1a1a"/><path d="M42 52 Q50 56 58 52" stroke="#7a3b1e" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#ffffff"/><path d="M32 62 L28 78 L40 74Z" fill="#f0f0f0"/><path d="M68 62 L72 78 L60 74Z" fill="#f0f0f0"/></svg>
-      <figcaption>DARIO VOSS<span>Wheelman — the white t-shirt</span></figcaption>
-    </figure>
-    <figure>
-      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#6a2a4a"/><circle cx="50" cy="38" r="18" fill="#f0c8a0"/><path d="M30 40 Q28 12 50 10 Q72 12 70 40 Q70 26 60 20 Q50 16 40 20 Q30 26 30 40Z" fill="#4a2c14"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M44 52 Q50 56 56 52" stroke="#a03040" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#c0392b"/><circle cx="50" cy="74" r="3" fill="#ffd23d"/></svg>
-      <figcaption>MARA<span>Dario's sister — the garage</span></figcaption>
-    </figure>
-    <figure>
-      <svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a5a3a"/><circle cx="50" cy="38" r="18" fill="#c98d5f"/><path d="M32 34 Q50 16 68 34 L66 24 Q50 10 34 24Z" fill="#111111"/><rect x="32" y="26" width="36" height="5" fill="#222"/><circle cx="43" cy="38" r="2.4" fill="#1a1a1a"/><circle cx="57" cy="38" r="2.4" fill="#1a1a1a"/><path d="M40 52 Q50 58 60 52" stroke="#5a2a10" stroke-width="2.5" fill="none"/><path d="M28 100 L32 62 Q50 54 68 62 L72 100Z" fill="#16a085"/><rect x="46" y="66" width="8" height="12" fill="#f1c40f"/></svg>
-      <figcaption>KITO<span>Friend — the lookout</span></figcaption>
-    </figure>
+    <figure><svg viewBox="0 0 64 64" width="72" height="72"><rect width="64" height="64" rx="10" fill="#27435e"/><circle cx="32" cy="26" r="14" fill="#e8b98a"/><path d="M18 20 Q32 8 46 20 L46 14 Q32 4 18 14 Z" fill="#1a1210"/><rect x="20" y="44" width="24" height="18" rx="6" fill="#ffffff"/></svg><figcaption>DARIO VOSS<small>wheelman</small></figcaption></figure>
+    <figure><svg viewBox="0 0 64 64" width="72" height="72"><rect width="64" height="64" rx="10" fill="#5a1a1a"/><circle cx="32" cy="26" r="14" fill="#f0c8a0"/><path d="M18 24 Q32 6 46 24 L46 14 Q32 2 18 14 Z" fill="#3a1a10"/><rect x="20" y="44" width="24" height="18" rx="6" fill="#c23b3b"/></svg><figcaption>MARA<small>his sister</small></figcaption></figure>
+    <figure><svg viewBox="0 0 64 64" width="72" height="72"><rect width="64" height="64" rx="10" fill="#0f3a34"/><circle cx="32" cy="26" r="14" fill="#8a5a34"/><rect x="18" y="10" width="28" height="9" rx="4" fill="#ffd23f"/><rect x="20" y="44" width="24" height="18" rx="6" fill="#2a9a8a"/></svg><figcaption>KITO<small>his best friend</small></figcaption></figure>
+    <figure><svg viewBox="0 0 64 64" width="72" height="72"><rect width="64" height="64" rx="10" fill="#3a1a3a"/><circle cx="32" cy="26" r="14" fill="#f0c8a0"/><rect x="18" y="10" width="28" height="8" rx="4" fill="#111111"/><rect x="20" y="44" width="24" height="18" rx="6" fill="#ff5a8a"/></svg><figcaption>DJ MAREA<small>OLA 104.5</small></figcaption></figure>
   </div>
-  <div class="menu">
-    <button id="btn-start">▶ NEW GAME</button>
-    <button id="btn-continue" class="secondary">CONTINUE</button>
+  <div>
+    <button id="btn-new" class="menu-btn">NEW GAME</button>
+    <button id="btn-continue" class="menu-btn ghost" style="display:none">CONTINUE</button>
+    <button id="btn-controls" class="menu-btn ghost">CONTROLS</button>
   </div>
-  <div class="controls">WASD / arrows — move &amp; drive &nbsp;·&nbsp; E — enter / exit car &nbsp;·&nbsp; F — pistol &nbsp;·&nbsp; SPACE — jump<br>
-  M — city map &nbsp;·&nbsp; P / ESC — pause &nbsp;·&nbsp; SHIFT — sprint &nbsp;·&nbsp; drag mouse — camera &nbsp;·&nbsp; touch buttons on mobile</div>
+  <div class="controls" id="controls-panel" style="display:none">
+    WASD / arrows — move &amp; drive &nbsp;·&nbsp; Space — handbrake &nbsp;·&nbsp; E — steal / exit car &nbsp;·&nbsp; F / click — shoot<br>
+    Q / 1–4 — weapon wheel &nbsp;·&nbsp; R — radio (OLA 104.5 · NEON 88 · PALM 92) &nbsp;·&nbsp; H — horn<br>
+    C — repaint at Mara's garage &nbsp;·&nbsp; M / Tab — full-city map &nbsp;·&nbsp; N — mute &nbsp;·&nbsp; P / Esc — pause<br>
+    Steal a car for Mara. Grab the Neon Sport at the marina. Hit the harbour heist. Win the Palm Avenue sprint.
+  </div>
+  <div class="foot">v1.4.0 · make.fun · gta6-01 — SOLMAR, an original game. No Rockstar / GTA content. Built by an AI agent for make.fun's "Make GTA 6" bounty.</div>
 </div>
 
-<div id="hud">
-  <div id="hud-top">
-    <div class="bars">
-      <div class="bar"><div id="hud-health"></div></div>
-      <div class="bar"><div id="hud-armor"></div></div>
+<div id="map-screen" class="overlay">
+  <div id="map-left">
+    <h2>SOLMAR</h2>
+    <h3>MAP — GOLDEN HOUR</h3>
+    <div id="map-stats"></div>
+    <button id="btn-map-resume" class="menu-btn">RESUME</button>
+    <button id="btn-map-save" class="menu-btn ghost">SAVE GAME</button>
+    <button id="btn-map-load" class="menu-btn ghost">LOAD GAME</button>
+    <button id="btn-map-quit" class="menu-btn ghost">QUIT TO TITLE</button>
+  </div>
+  <div id="map-right">
+    <canvas id="map-canvas" width="720" height="530"></canvas>
+    <div id="map-legend">
+      <span><b class="lg-gold">●</b> Objective / Sun Shell</span>
+      <span><b class="lg-gold">- -</b> Gold route</span>
+      <span><b class="lg-green">■</b> Package</span>
+      <span><b class="lg-red">●</b> Guard / Police</span>
+      <span><b class="lg-blue">●</b> Plaza fountain</span>
+      <span><b class="lg-white">▲</b> You</span>
+      <span><b class="lg-pink">●</b> Neon Sport</span>
     </div>
-    <div>
-      <div id="hud-money">$150</div>
-      <div id="hud-stars">☆☆☆☆☆</div>
-      <div id="hud-clock">08:00</div>
-    </div>
   </div>
-  <canvas id="minimap" width="150" height="150"></canvas>
-  <div id="hud-speed"></div>
-  <div id="hud-mission"></div>
-  <div id="dialogue"><div id="dialogue-portrait"></div><div id="dialogue-body"><div id="dialogue-who"></div><div id="dialogue-text"></div></div></div>
-  <div id="hud-flash"></div>
 </div>
 
-<div id="map-overlay"><h2 style="margin-bottom:10px;letter-spacing:.2em">SOLMAR — CITY MAP</h2>
-<canvas id="citymap" width="460" height="460"></canvas>
-<p style="margin-top:10px;opacity:.85">M — close &nbsp;·&nbsp; yellow dot: mission &nbsp;·&nbsp; white dot: you</p></div>
-
-<div id="pause-overlay"><h2>PAUSED</h2><button id="btn-resume">RESUME</button></div>
-
-<div id="touch-ui">
-  <div class="tbtn" id="t-up">▲</div><div class="tbtn" id="t-down">▼</div>
-  <div class="tbtn" id="t-left">◀</div><div class="tbtn" id="t-right">▶</div>
-  <div class="tbtn" id="t-act">E</div><div class="tbtn" id="t-fire">F</div>
+<div id="busted-screen" class="overlay">
+  <div id="busted-title">BUSTED</div>
+  <div id="busted-sub"></div>
 </div>
 
-<script type="importmap">
-{ "imports": { "three": "./vendor/three.module.min.js" } }
-</script>
+<div id="pause-screen" class="overlay">
+  <h1>PAUSED</h1>
+  <div>
+    <button id="btn-resume" class="menu-btn">RESUME</button>
+    <button id="btn-quit-title" class="menu-btn ghost">QUIT TO TITLE</button>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

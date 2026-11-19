@@ -1,56 +1,36 @@
-# SOLMAR — Streets of the Sun
-
-An original open-world crime game for the make.fun **gta6-01** competition
-("Make GTA 6"): a sunny coastal city, a wheelman taking back his sister's
-garage from the Vane family — steal a car, lose the cops in a Neon Sport,
-pull a harbour heist.
+# makefun-gta6-01
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/0xPaasepp/makefun-gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-## Play
+SOLMAR — Streets of the Sun: an original open-world crime game set in the coastal city of Solmar at permanent golden hour. Drive, steal cars, outrun the police, and run eight named story missions for Dario Voss — plus taxi fares, courier runs, two street races, a package hunt, 10 hidden Sun Shells, and a working paint shop at Mara's garage.
 
-Open `game/index.html` in a desktop browser — fully static, zero network
-requests. Three.js is vendored under `game/vendor/`.
-
-- **WASD / arrows** — move & drive · **E** — enter / exit car · **F** — pistol
-- **SPACE** — jump · **M** — city map · **P / ESC** — pause · **SHIFT** — sprint
-- Drag the mouse to orbit the camera; touch buttons on mobile.
-
-## The game
-
-- **Solmar**: a procedural coastal city — plaza + fountain, Palm Avenue,
-  marina, docks with cranes, residential / commercial / industrial districts,
-  parks, parking bays, traffic lights, day–sunset–night cycle.
-- **Rendering**: ACES tone mapping, PMREM environment map, MeshPhysicalMaterial
-  clearcoat car paint, animated water, fog, PCF soft shadows, lit windows and
-  streetlights at night.
-- **Cars**: 7 original models with detailed bodywork — cabin, glass, wheels,
-  headlights, brake lights, mirrors, exhaust, interiors — plus suspension
-  visuals, weight transfer, gear-based engine sound and damage smoke.
-- **Systems**: wanted 0–5 (foot cops, cruisers that chase and ram, roadblocks,
-  police helicopter at wanted 4), 3 story missions, a Sunset Sprint time
-  trial, moving traffic, pedestrians, pistol combat, autosave + Continue.
-- **Audio**: everything synthesized in WebAudio — engine, tires, collisions,
-  gunshots, and SOL FM procedural radio. No audio files.
-
-## Missions
-
-1. **A Car for Mara** — steal a car, deliver it to the garage (+$500).
-2. **Neon Nights** — grab the Neon Sport at the marina and lose the police (+$800).
-3. **Harbour Heist** — four armed Vane guards, take the crates (+$3,500).
-
-## Build
+## Run it
 
 ```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+python3 -m http.server 8080 --directory game
 ```
 
-`main.ts` (Node 22, stdlib only) copies `game/` and `screenshots/` to the
-output dir and writes `dossier.json` via `vendor/makefun-game.ts`.
+Then open http://localhost:8080/ in a desktop browser. No network needed — everything (including three.js) is vendored under `game/`.
 
-## License
+## Play
 
-MIT — see `LICENSE`. All characters, places, cars, and art are original;
-nothing is taken from any other game.
+- **WASD / arrows** — move on foot, drive in a car · **Space** — handbrake
+- **E** — steal / exit a car (stealing an occupied car draws the police)
+- **F / click** — shoot · **Q / 1–4** — weapon wheel (Pistol, SMG, Shotgun, Rifle)
+- **R** — cycle radio stations (OLA 104.5 with DJ Marea, NEON 88 with DJ Vela, PALM 92 with DJ Sol) · **H** — horn · **N** — mute · **P / Esc** — pause
+- **M / Tab** — full-city map: named districts, legend, gold route to the objective, stats (Cash, Story x/8, Shells, Respect, Escapes / Takedowns / Races won), SAVE / LOAD
+- **C** — repaint your car at Mara's garage ($50 a coat, 6 colours)
+
+Eight named story missions, each with a giver and an objective: **A Car for Mara** (steal a car, +$500), **Neon Nights** (grab the Neon Sport at the marina and lose the cops, +$800), **Harbour Heist** (take down 4 armed guards and grab the cash at the docks, +$3,500), **Paint It Gold** (repaint a car at the garage, +$600), **Marina Sprint** (win the east-road race, +$700), **Badge Trouble** (get 2+ stars, then lose the cops clean, +$900), **Shell Game** (find 3 Sun Shells for DJ Marea, +$500), and the finale **King of the Sunset** (win the Palm Avenue sprint, +$5,000). The story opens on Mara's incoming phone call.
+
+Wanted level 0–5 with foot cops, chase cruisers, roadblocks and a police helicopter, plus a live dispatch panel with named units (UNIT 7 — ROOK, AIR 1 — HALCON…) and IN SIGHT / SEARCHING / EVADING states with a live evade %. Getting caught or wasted shows an explicit BUSTED / WASTED screen — never a silent respawn. Respect ranks from NOBODY to LEGEND OF SOLMAR; 10 Sun Shells to find; autosave every 30 seconds and on every mission complete.
+
+## Golden hour, glare-safe
+
+The clock lives inside the 16:30–19:30 golden band forever and the sun sits low in the west, off the north–south Palm Avenue sightlines — so driving into the sunset never whites the screen out. Long shadows stretch east from every building, palm and car, headlights glow, and a vignette keeps the street readable.
+
+---
+
+<sub>Entered on [make.fun](https://make.fun/?ref=ddn7bre1&utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>

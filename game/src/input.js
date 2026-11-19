@@ -1,74 +1,56 @@
-// SOLMAR input — keyboard + touch buttons + pointer camera orbit.
+// Keyboard + mouse input. No pointer lock: the mouse aims by ray to the
+// ground plane, and F / click both fire, so the game works in a plain tab.
+// Rebuild 12: named action getters for the wheel (Q), horn (H), paint (C)
+// and radio (R), so game.js reads intent, not raw key codes.
+// Rebuild 13: M opens the full-city map (mute moves to N so M is free),
+// Space is the handbrake while driving.
 export class Input {
-  constructor(game) {
-    this.game = game;
-    this.keys = {};
-    this.touch = { forward: false, back: false, left: false, right: false };
-    this.yawDelta = 0; this.pitchDelta = 0;
-    this._bindKeys();
-    this._bindTouch();
-    this._bindPointer();
-  }
-  _bindKeys() {
-    addEventListener('keydown', (e) => {
+  constructor() {
+    this.keys = new Set();
+    this.mouseX = 0; this.mouseY = 0;
+    this.mouseDown = false;
+    this.pressed = new Set(); // edge-triggered, consumed by game each tick
+    this.onFirstGesture = null;
+    this._gestured = false;
+    window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
-      this.keys[e.code] = true;
-      const g = this.game;
-      if (e.code === 'KeyE') g.tryEnterCar();
-      if (e.code === 'KeyF') g.combat.shoot();
-      if (e.code === 'KeyM') g.hud.toggleMap();
-      if (e.code === 'Escape' || e.code === 'KeyP') g.togglePause();
-      if (e.code === 'Space') { g.jump(); e.preventDefault(); }
+      this.keys.add(e.code);
+      this.pressed.add(e.code);
+      this._gesture();
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault();
     });
-    addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; });
+    // Clicks on menus/buttons are UI, not shots: only a mousedown on the
+    // game canvas itself records Mouse0. (A NEW GAME click used to leak
+    // into the first frame as a pistol shot — instant wanted at spawn.)
+    window.addEventListener('mousedown', (e) => { if (e.button === 0 && e.target && e.target.id === 'game-canvas') { this.mouseDown = true; this.pressed.add('Mouse0'); } this._gesture(); });
+    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouseDown = false; });
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
   }
-  _bindTouch() {
-    const bind = (id, key) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const on = (e) => { e.preventDefault(); this.touch[key] = true; };
-      const off = (e) => { e.preventDefault(); this.touch[key] = false; };
-      el.addEventListener('touchstart', on, { passive: false });
-      el.addEventListener('touchend', off, { passive: false });
-      el.addEventListener('mousedown', on);
-      el.addEventListener('mouseup', off);
-    };
-    bind('t-up', 'forward'); bind('t-down', 'back');
-    bind('t-left', 'left'); bind('t-right', 'right');
-    const act = (id, fn) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
-      el.addEventListener('click', fn);
-    };
-    act('t-act', () => this.game.tryEnterCar());
-    act('t-fire', () => this.game.combat.shoot());
+  _gesture() {
+    if (!this._gestured) { this._gestured = true; if (this.onFirstGesture) this.onFirstGesture(); }
   }
-  _bindPointer() {
-    const cv = document.getElementById('game-canvas');
-    let dragging = false, lx = 0, ly = 0;
-    cv.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
-    addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      this.yawDelta += (e.clientX - lx) * 0.005;
-      this.pitchDelta += (e.clientY - ly) * 0.004;
-      lx = e.clientX; ly = e.clientY;
-    });
-    addEventListener('pointerup', () => { dragging = false; });
-  }
-  get state() {
-    const k = this.keys, t = this.touch;
-    return {
-      forward: !!(k.KeyW || k.ArrowUp || t.forward),
-      back: !!(k.KeyS || k.ArrowDown || t.back),
-      left: !!(k.KeyA || k.ArrowLeft || t.left),
-      right: !!(k.KeyD || k.ArrowRight || t.right),
-      sprint: !!(k.ShiftLeft || k.ShiftRight),
-    };
-  }
-  consumeCamera() {
-    const d = { yaw: this.yawDelta, pitch: this.pitchDelta };
-    this.yawDelta = 0; this.pitchDelta = 0;
-    return d;
-  }
+  down(code) { return this.keys.has(code); }
+  wasPressed(code) { return this.pressed.has(code); }
+  consume(code) { this.pressed.delete(code); }
+  // Edge-triggered tap: true once, then consumed — for wheel/horn/paint.
+  tap(code) { if (this.pressed.has(code)) { this.pressed.delete(code); return true; } return false; }
+  endTick() { this.pressed.clear(); }
+  get forward() { return this.down('KeyW') || this.down('ArrowUp'); }
+  get back() { return this.down('KeyS') || this.down('ArrowDown'); }
+  get left() { return this.down('KeyA') || this.down('ArrowLeft'); }
+  get right() { return this.down('KeyD') || this.down('ArrowRight'); }
+  get run() { return this.down('ShiftLeft') || this.down('ShiftRight'); }
+  // Rebuild 12 actions.
+  get wheelNext() { return this.tap('KeyQ'); }      // cycle weapon / show wheel
+  get wheelPrev() { return this.tap('KeyZ'); }      // cycle weapon backwards
+  get horn() { return this.tap('KeyH'); }           // car horn
+  get paint() { return this.tap('KeyC'); }          // repaint at Mara's garage
+  get radio() { return this.tap('KeyR'); }          // next radio station
+  get mute() { return this.tap('KeyN'); }           // mute toggle (rebuild 13: M is the map now)
+  // Rebuild 13 actions.
+  get map() { return this.tap('KeyM') || this.tap('Tab'); } // full-city map
+  get handbrake() { return this.down('Space'); }    // handbrake while driving
 }
